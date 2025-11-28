@@ -26,24 +26,27 @@ class BorrowService:
         return borrow
 
     def return_book(self, borrow_id: int, user_id: int):
-        borrow = crud_borrow.get_borrow(SessionLocal(), borrow_id)
+    # Use the same session as the service
+        borrow = crud_borrow.get_borrow(self.db, borrow_id)
         if not borrow:
-            raise ValueError("borrow record not found")
+            raise ValueError("Borrow record not found")
 
         if borrow.user_id != user_id:
-            raise ValueError("you cannot return another user's borrow")
+            raise ValueError("You cannot return another user's borrow")
 
         if borrow.returned_at:
-            raise ValueError("already returned")
+            raise ValueError("Already returned")
 
-        borrow = crud_borrow.set_returned(self.db.query(models.Borrow).get(borrow.id))
+        # CORRECT: pass both db and borrow object
+        borrow = crud_borrow.set_returned(self.db, borrow)
 
+        # Update book copies
         book = self.db.query(models.Book).filter(models.Book.id == borrow.book_id).first()
-        if book.available_copies < book.total_copies:
+        if book and book.available_copies < book.total_copies:
             book.available_copies += 1
             self.db.commit()
 
-        # fee calculation
+        # Calculate late fee
         fee = 0
         if borrow.returned_at and borrow.due_date and borrow.returned_at > borrow.due_date:
             days = (borrow.returned_at - borrow.due_date).days
@@ -52,6 +55,7 @@ class BorrowService:
             self.db.commit()
 
         return borrow
+
 
 
 # Decorator example
