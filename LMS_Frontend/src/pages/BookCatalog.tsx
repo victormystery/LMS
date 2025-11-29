@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { booksService } from "@/services/books";
+import { borrowsService } from "@/services/borrows";
 import api from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +17,7 @@ const BookCatalog = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [borrowLoadingId, setBorrowLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -37,6 +39,29 @@ const BookCatalog = () => {
 
     fetchBooks();
   }, [toast]);
+
+  const handleBorrow = async (bookId: number, e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.stopPropagation();
+    setBorrowLoadingId(bookId);
+    try {
+      await borrowsService.borrowBook({ book_id: bookId });
+      toast({ title: "Book borrowed", description: "Enjoy your reading!" });
+      // Refresh book list to get updated available_copies
+      setIsLoading(true);
+      const data = await booksService.getBooks();
+      setBooks(data);
+    } catch (err) {
+      console.error("Borrow failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Borrow failed",
+        description: (err as any)?.message || "Could not borrow the book.",
+      });
+    } finally {
+      setBorrowLoadingId(null);
+      setIsLoading(false);
+    }
+  };
 
   const filteredBooks = books.filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -120,15 +145,13 @@ const BookCatalog = () => {
               </CardContent>
               <CardFooter>
                       {book.available_copies > 0 ? (
-                        <Button className="w-full" onClick={(e) => {
-                          e.stopPropagation();
-                          // Borrow action
-                        }}>Borrow Book</Button>
+                        <Button className="w-full" onClick={(e) => handleBorrow(book.id, e)} disabled={borrowLoadingId === book.id}>
+                          {borrowLoadingId === book.id ? "Borrowing..." : "Borrow Book"}
+                        </Button>
                       ) : (
-                        <Button className="w-full" variant="outline" onClick={(e) => {
-                          e.stopPropagation();
-                          // Reserve action
-                        }}>Reserve</Button>
+                        <Button className="w-full" variant="outline" onClick={(e) => { e.stopPropagation(); /* Reserve action */ }}>
+                          Reserve
+                        </Button>
                       )}
               </CardFooter>
             </Card>
