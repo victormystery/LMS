@@ -6,24 +6,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import api from "@/lib/api";
 
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [credentials, setCredentials] = useState({ username: "", password: "" });
 
-  const handleLogin = (e: React.FormEvent, role: string) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    try {
+      const data = await api.login({
+        username: credentials.username,
+        password: credentials.password,
+      });
 
-    // Mock login - in real app, this would call authentication API
-    setTimeout(() => {
-      setIsLoading(false);
-      if (role === "librarian") {
-        navigate("/librarian-dashboard");
-      } else {
-        navigate("/catalog");
+      if (data?.access_token) {
+        api.setToken(data.access_token);
       }
-    }, 1000);
+      if (data?.user) {
+        api.saveUser(data.user);
+        if (data.user.role === "librarian") {
+          navigate("/librarian-dashboard");
+        } else {
+          navigate("/catalog");
+        }
+      } else {
+        navigate("/");
+      }
+    } catch (err) {
+      console.error(err);
+      alert((err as Error).message || "Login failed");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRegisterRedirect = () => {
@@ -52,14 +69,29 @@ const Login = () => {
 
             {/* USER LOGIN TAB */}
             <TabsContent value="user" className="space-y-4">
-              <form onSubmit={(e) => handleLogin(e, "user")} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="user-username">Username</Label>
-                  <Input id="user-username" type="text" placeholder="username" required />
+                  <Input
+                    id="user-username"
+                    name="username"
+                    type="text"
+                    placeholder="username"
+                    required
+                    value={credentials.username}
+                    onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="user-password">Password</Label>
-                  <Input id="user-password" type="password" required />
+                  <Input
+                    id="user-password"
+                    name="password"
+                    type="password"
+                    required
+                    value={credentials.password}
+                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                  />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}
@@ -79,19 +111,29 @@ const Login = () => {
 
             {/* LIBRARIAN LOGIN TAB */}
             <TabsContent value="librarian" className="space-y-4">
-              <form onSubmit={(e) => handleLogin(e, "librarian")} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="librarian-username">Username</Label>
                   <Input
                     id="librarian-username"
+                    name="username"
                     type="text"
                     placeholder="librarianusername"
                     required
+                    value={credentials.username}
+                    onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="librarian-password">Password</Label>
-                  <Input id="librarian-password" type="password" required />
+                  <Input
+                    id="librarian-password"
+                    name="password"
+                    type="password"
+                    required
+                    value={credentials.password}
+                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                  />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}

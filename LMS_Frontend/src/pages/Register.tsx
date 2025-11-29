@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
+import api from "@/lib/api";
 
 const Register = () => {
     const navigate = useNavigate();
@@ -13,40 +14,54 @@ const Register = () => {
     const [formData, setFormData] = useState({
         full_name: "",
         username: "",
-        email: "",
         password: "",
+        role: "student",
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleRegister = async (e: React.FormEvent, role: string) => {
+    const handleRegister = async (e: React.FormEvent, roleParam?: string) => {
         e.preventDefault();
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:8000/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    full_name: formData.full_name,
-                    username: formData.username,
-                    password: formData.password,
-                    role,
-                }),
+            const selectedRole = formData.role || roleParam || "student";
+            const data = await api.register({
+                full_name: formData.full_name,
+                username: formData.username,
+                password: formData.password,
+                role: selectedRole,
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Registration failed");
-            }
-
-            const data = await response.json();
             console.log("User registered:", data);
 
-            // Redirect to login after successful registration
-            navigate("/login");
+            // Auto-login after successful registration
+            try {
+                const loginRes = await api.login({
+                    username: formData.username,
+                    password: formData.password,
+                });
+
+                if (loginRes?.access_token) {
+                    api.setToken(loginRes.access_token);
+                }
+                if (loginRes?.user) {
+                    api.saveUser(loginRes.user);
+                    if (loginRes.user.role === "librarian") {
+                        navigate("/librarian-dashboard");
+                    } else {
+                        navigate("/catalog");
+                    }
+                } else {
+                    navigate("/login");
+                }
+            } catch (err) {
+                // login failed - fall back to manual login
+                console.warn("Auto-login failed:", err);
+                navigate("/login");
+            }
         } catch (error) {
             console.error(error);
             alert((error as Error).message);
@@ -103,9 +118,12 @@ const Register = () => {
                                     <Label htmlFor="roles">Role</Label>
                                     <select
                                         id="roles"
-                                        name="roles"
+                                        name="role"
                                         required
-                                        // onChange={handleChange}
+                                        aria-label="Role"
+                                        title="Role"
+                                        value={formData.role}
+                                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                         className="w-full border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                                     >
                                         <option value="">Select role</option>
