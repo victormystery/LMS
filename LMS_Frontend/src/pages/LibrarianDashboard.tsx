@@ -189,9 +189,36 @@ const LibrarianDashboard = () => {
             <h2 className="text-2xl font-bold">Borrowed Books Tracking</h2>
             <Card>
               <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Backend does not expose a global borrow-tracking endpoint. Borrowed counts are derived from catalog availability.</div>
+                <div className="text-sm text-muted-foreground">Borrowed counts are derived from catalog availability.</div>
               </CardContent>
             </Card>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {books.filter(b => (b.total_copies - b.available_copies) > 0).length === 0 ? (
+                <div className="text-muted-foreground col-span-full">No currently borrowed titles.</div>
+              ) : (
+                books.filter(b => (b.total_copies - b.available_copies) > 0).map((b) => (
+                  <Card key={b.id}>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{b.title}</CardTitle>
+                      <CardDescription className="text-sm">{b.author}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Borrowed copies</p>
+                          <div className="text-xl font-bold">{b.total_copies - b.available_copies}</div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Total</p>
+                          <div className="font-medium">{b.total_copies}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </main>
