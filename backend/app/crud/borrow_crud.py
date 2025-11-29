@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from backend.app.db import models
 
-BORROW_DAYS_DEFAULT = 14
+BORROW_DAYS_DEFAULT = 2
 
 
 def create_borrow(db: Session, user_id: int, book_id: int) -> models.Borrow:

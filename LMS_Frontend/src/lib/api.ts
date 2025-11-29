@@ -60,7 +60,7 @@ async function request(path: string, options: RequestInit = {}) {
         return null;
       }
     }
-
+  
     // axios-like convenience wrappers that return { data }
     async function get(path: string, options: RequestInit = {}) {
       const API_URL = (import.meta as any).env.VITE_API_URL ?? "http://127.0.0.1:8000";
@@ -208,3 +208,4 @@ async function request(path: string, options: RequestInit = {}) {
       export default api;
 
       export { API_URL };
+  
