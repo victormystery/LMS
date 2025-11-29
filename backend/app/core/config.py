@@ -8,8 +8,11 @@ class Settings(BaseModel):
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+<<<<<<< HEAD
+=======
         "http://localhost:8080",
         "http://127.0.0.1:8080",
+>>>>>>> e525b8ee46c116055b0ced42dbdb05d67284ce1f
     ]
 
     SQLALCHEMY_DATABASE_URI: str = "sqlite:///./library.db"

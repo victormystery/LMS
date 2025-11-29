@@ -2,15 +2,12 @@ import api from "@/lib/api";
 
 export const authService = {
   login: async (username: string, password: string) => {
-    const formData = new FormData();
-    formData.append("username", username);
-    formData.append("password", password);
-    const response = await api.post("/api/auth/access-token", formData);
+    const response = await api.post("/api/auth/login", { username, password });
     return response.data;
   },
 
   register: async (userData: any) => {
-    const response = await api.post("/api/users/", userData);
+    const response = await api.post("/api/auth/register", userData);
     return response.data;
   },
 
