@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,23 +9,44 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BookOpen, Plus, Users, BookMarked, AlertCircle, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { booksService } from "@/services/books";
+import { useToast } from "@/hooks/use-toast";
 
-const mockCatalog = [
-  { id: 1, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "978-0743273565", copies: 3, available: 2 },
-  { id: 2, title: "To Kill a Mockingbird", author: "Harper Lee", isbn: "978-0060935467", copies: 2, available: 0 },
-  { id: 3, title: "1984", author: "George Orwell", isbn: "978-0451524935", copies: 4, available: 3 },
-];
-
-const mockBorrowedBooks = [
-  { id: 1, title: "The Great Gatsby", user: "John Doe", userType: "Student", dueDate: "2025-12-01", status: "active" },
-  { id: 2, title: "To Kill a Mockingbird", user: "Jane Smith", userType: "Faculty", dueDate: "2025-11-28", status: "active" },
-  { id: 3, title: "Clean Code", user: "Bob Wilson", userType: "Student", dueDate: "2025-11-10", status: "overdue" },
-];
+type BookRow = {
+  id: number;
+  title: string;
+  author: string;
+  isbn: string;
+  total_copies: number;
+  available_copies: number;
+};
 
 const LibrarianDashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
-  const overdueCount = mockBorrowedBooks.filter(b => b.status === "overdue").length;
+  const [books, setBooks] = useState<BookRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [deletingIsbn, setDeletingIsbn] = useState<string | null>(null);
+
+  const overdueCount = 0; // Backend doesn't expose global overdue list; keep 0 or implement backend endpoint
+
+  const loadBooks = async () => {
+    setLoading(true);
+    try {
+      const data = await booksService.getBooks();
+      setBooks(data || []);
+    } catch (err) {
+      console.error("Failed to load books:", err);
+      toast({ variant: "destructive", title: "Error", description: "Could not load catalog." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // load on mount
+  useEffect(() => { loadBooks(); }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,14 +68,14 @@ const LibrarianDashboard = () => {
       <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <Card>
+            <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Books</CardTitle>
               <BookMarked className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockCatalog.reduce((sum, book) => sum + book.copies, 0)}</div>
-              <p className="text-xs text-muted-foreground">Across {mockCatalog.length} titles</p>
+              <div className="text-2xl font-bold">{books.reduce((sum, b) => sum + b.total_copies, 0)}</div>
+              <p className="text-xs text-muted-foreground">Across {books.length} titles</p>
             </CardContent>
           </Card>
           <Card>
@@ -63,8 +84,8 @@ const LibrarianDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockBorrowedBooks.length}</div>
-              <p className="text-xs text-muted-foreground">By registered users</p>
+              <div className="text-2xl font-bold">{books.reduce((sum, b) => sum + (b.total_copies - b.available_copies), 0)}</div>
+              <p className="text-xs text-muted-foreground">Currently borrowed across catalog</p>
             </CardContent>
           </Card>
           <Card className={overdueCount > 0 ? "border-destructive" : ""}>
@@ -102,35 +123,17 @@ const LibrarianDashboard = () => {
                     <DialogTitle>Add New Book</DialogTitle>
                     <DialogDescription>Enter the details of the book to add to the catalog.</DialogDescription>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Title</Label>
-                      <Input id="title" placeholder="Book title" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="author">Author</Label>
-                      <Input id="author" placeholder="Author name" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="isbn">ISBN</Label>
-                      <Input id="isbn" placeholder="978-XXXXXXXXXX" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="copies">Number of Copies</Label>
-                      <Input id="copies" type="number" min="1" defaultValue="1" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsAddBookOpen(false)}>Cancel</Button>
-                    <Button onClick={() => setIsAddBookOpen(false)}>Add Book</Button>
-                  </DialogFooter>
+                  <AddBookForm onClose={() => setIsAddBookOpen(false)} onCreated={async () => {
+                    setIsAddBookOpen(false);
+                    await loadBooks();
+                  }} />
                 </DialogContent>
               </Dialog>
             </div>
 
             <Card>
               <CardContent className="p-0">
-                <Table>
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
@@ -142,20 +145,36 @@ const LibrarianDashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockCatalog.map((book) => (
+                    {books.map((book) => (
                       <TableRow key={book.id}>
                         <TableCell className="font-medium">{book.title}</TableCell>
                         <TableCell>{book.author}</TableCell>
                         <TableCell className="text-muted-foreground">{book.isbn}</TableCell>
-                        <TableCell>{book.copies}</TableCell>
+                        <TableCell>{book.total_copies}</TableCell>
                         <TableCell>
-                          <Badge variant={book.available > 0 ? "default" : "secondary"}>
-                            {book.available}
+                          <Badge variant={book.available_copies > 0 ? "default" : "secondary"}>
+                            {book.available_copies}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">Edit</Button>
-                          <Button variant="ghost" size="sm">Remove</Button>
+                          <Button variant="ghost" size="sm" onClick={async () => {
+                            // TODO: wire edit
+                            toast({ title: "Edit", description: "Edit is not implemented yet." });
+                          }}>Edit</Button>
+                          <Button variant="ghost" size="sm" onClick={async () => {
+                            if (!confirm(`Remove book ${book.title}?`)) return;
+                            try {
+                              setDeletingIsbn(book.isbn);
+                              await booksService.deleteBook(book.isbn);
+                              toast({ title: "Deleted", description: `${book.title} removed.` });
+                              await loadBooks();
+                            } catch (err) {
+                              console.error("Delete failed:", err);
+                              toast({ variant: "destructive", title: "Delete failed", description: (err as any)?.message || "Could not delete book." });
+                            } finally {
+                              setDeletingIsbn(null);
+                            }
+                          }}>{deletingIsbn === book.isbn ? "Removing..." : "Remove"}</Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -169,44 +188,62 @@ const LibrarianDashboard = () => {
           <TabsContent value="borrowed" className="space-y-4">
             <h2 className="text-2xl font-bold">Borrowed Books Tracking</h2>
             <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Book Title</TableHead>
-                      <TableHead>Borrower</TableHead>
-                      <TableHead>User Type</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockBorrowedBooks.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium">{record.title}</TableCell>
-                        <TableCell>{record.user}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{record.userType}</Badge>
-                        </TableCell>
-                        <TableCell>{record.dueDate}</TableCell>
-                        <TableCell>
-                          <Badge variant={record.status === "overdue" ? "destructive" : "default"}>
-                            {record.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">Mark Returned</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <CardContent className="p-4">
+                <div className="text-sm text-muted-foreground">Backend does not expose a global borrow-tracking endpoint. Borrowed counts are derived from catalog availability.</div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </main>
+    </div>
+  );
+};
+
+const AddBookForm = ({ onClose, onCreated }: { onClose: () => void; onCreated?: () => Promise<void> }) => {
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
+  const [isbn, setIsbn] = useState("");
+  const [copies, setCopies] = useState(1);
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleCreate = async () => {
+    setLoading(true);
+    try {
+      await booksService.createBook({ title, author, isbn, total_copies: copies });
+      toast({ title: "Book added", description: `${title} added to catalog.` });
+      if (onCreated) await onCreated();
+      onClose();
+    } catch (err) {
+      console.error("Create failed:", err);
+      toast({ variant: "destructive", title: "Add failed", description: (err as any)?.message || "Could not add book." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Book title" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="author">Author</Label>
+        <Input id="author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="isbn">ISBN</Label>
+        <Input id="isbn" value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="978-XXXXXXXXXX" />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="copies">Number of Copies</Label>
+        <Input id="copies" type="number" min={1} value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
+      </div>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleCreate} disabled={loading}>{loading ? "Adding..." : "Add Book"}</Button>
+      </div>
     </div>
   );
 };
