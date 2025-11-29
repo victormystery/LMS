@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
+import { authService } from "@/services/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         full_name: "",
@@ -26,30 +29,25 @@ const Register = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch("http://localhost:8000/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    full_name: formData.full_name,
-                    username: formData.username,
-                    password: formData.password,
-                    role,
-                }),
+            const userData = {
+                ...formData,
+                role, // Add role to the user data
+            };
+
+            await authService.register(userData);
+
+            toast({
+                title: "Registration successful",
+                description: "Please sign in with your new account.",
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Registration failed");
-            }
-
-            const data = await response.json();
-            console.log("User registered:", data);
-
-            // Redirect to login after successful registration
-            navigate("/login");
+            navigate("/");
         } catch (error) {
-            console.error(error);
-            alert((error as Error).message);
+            console.error("Registration failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Registration failed",
+                description: "Please check your details and try again.",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -100,20 +98,16 @@ const Register = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="roles">Role</Label>
-                                    <select
-                                        id="roles"
-                                        name="roles"
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="john@example.com"
                                         required
-                                        // onChange={handleChange}
-                                        className="w-full border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    >
-                                        <option value="">Select role</option>
-                                        <option value="student">Student</option>
-                                        <option value="staff">Staff</option>
-                                    </select>
+                                        onChange={handleChange}
+                                    />
                                 </div>
-
                                 <div className="space-y-2">
                                     <Label htmlFor="password">Password</Label>
                                     <Input
@@ -157,6 +151,17 @@ const Register = () => {
                                         name="username"
                                         type="text"
                                         placeholder="librarian01"
+                                        required
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lib_email">Email</Label>
+                                    <Input
+                                        id="lib_email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="jane@library.com"
                                         required
                                         onChange={handleChange}
                                     />

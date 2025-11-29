@@ -6,24 +6,54 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { authService } from "@/services/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent, role: string) => {
+  const handleLogin = async (e: React.FormEvent, role: string) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock login - in real app, this would call authentication API
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Get the username and password from the form
+      const form = e.target as HTMLFormElement;
+      const usernameInput = form.querySelector(`input[id="${role}-username"]`) as HTMLInputElement;
+      const passwordInput = form.querySelector(`input[id="${role}-password"]`) as HTMLInputElement;
+
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+
+      const data = await authService.login(username, password);
+      localStorage.setItem("token", data.access_token);
+
+      // Fetch current user to confirm role/identity if needed, or just redirect
+      // For now, we trust the role selection for redirection, but in a real app 
+      // we should check the user's role from the backend
+
       if (role === "librarian") {
         navigate("/librarian-dashboard");
       } else {
         navigate("/catalog");
       }
-    }, 1000);
+
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+    } catch (error) {
+      console.error("Login failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: "Please check your credentials and try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRegisterRedirect = () => {

@@ -1,24 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const mockBooks = [
-  { id: 1, title: "The Great Gatsby", author: "F. Scott Fitzgerald", isbn: "978-0743273565", status: "available", category: "Fiction" },
-  { id: 2, title: "To Kill a Mockingbird", author: "Harper Lee", isbn: "978-0060935467", status: "borrowed", category: "Fiction" },
-  { id: 3, title: "1984", author: "George Orwell", isbn: "978-0451524935", status: "available", category: "Fiction" },
-  { id: 4, title: "Clean Code", author: "Robert C. Martin", isbn: "978-0132350884", status: "available", category: "Technology" },
-  { id: 5, title: "Design Patterns", author: "Gang of Four", isbn: "978-0201633612", status: "borrowed", category: "Technology" },
-  { id: 6, title: "The Pragmatic Programmer", author: "Andy Hunt", isbn: "978-0135957059", status: "available", category: "Technology" },
-];
+import { booksService } from "@/services/books";
+import { useToast } from "@/hooks/use-toast";
 
 const BookCatalog = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [books] = useState(mockBooks);
+  const [books, setBooks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const data = await booksService.getBooks();
+        setBooks(data);
+      } catch (error) {
+        console.error("Failed to fetch books:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load books. Please try again later.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, [toast]);
 
   const filteredBooks = books.filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,44 +84,50 @@ const BookCatalog = () => {
 
         {/* Books Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredBooks.map((book) => (
-            <Card 
-              key={book.id} 
-              className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(`/book/${book.id}`)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{book.title}</CardTitle>
-                    <CardDescription className="mt-1">{book.author}</CardDescription>
+          {isLoading ? (
+            <p>Loading books...</p>
+          ) : filteredBooks.length > 0 ? (
+            filteredBooks.map((book) => (
+              <Card
+                key={book.id}
+                className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => navigate(`/book/${book.id}`)}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{book.title}</CardTitle>
+                      <CardDescription className="mt-1">{book.author}</CardDescription>
+                    </div>
+                    <Badge variant={book.available_copies > 0 ? "default" : "secondary"}>
+                      {book.available_copies > 0 ? "Available" : "Borrowed"}
+                    </Badge>
                   </div>
-                  <Badge variant={book.status === "available" ? "default" : "secondary"}>
-                    {book.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-2 text-sm">
-                  <p className="text-muted-foreground">ISBN: {book.isbn}</p>
-                  <p className="text-muted-foreground">Category: {book.category}</p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                {book.status === "available" ? (
-                  <Button className="w-full" onClick={(e) => {
-                    e.stopPropagation();
-                    // Borrow action
-                  }}>Borrow Book</Button>
-                ) : (
-                  <Button className="w-full" variant="outline" onClick={(e) => {
-                    e.stopPropagation();
-                    // Reserve action
-                  }}>Reserve</Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground">ISBN: {book.isbn}</p>
+                    <p className="text-muted-foreground">Category: {book.category || "General"}</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  {book.available_copies > 0 ? (
+                    <Button className="w-full" onClick={(e) => {
+                      e.stopPropagation();
+                      // Borrow action
+                    }}>Borrow Book</Button>
+                  ) : (
+                    <Button className="w-full" variant="outline" onClick={(e) => {
+                      e.stopPropagation();
+                      // Reserve action
+                    }}>Reserve</Button>
+                  )}
+                </CardFooter>
+              </Card>
+            ))
+          ) : (
+            <p>No books found.</p>
+          )}
         </div>
       </main>
     </div>
