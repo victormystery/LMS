@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
-import api from "@/lib/api";
+import api from "@/lib/api_clean";
 import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {

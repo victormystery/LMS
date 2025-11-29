@@ -7,7 +7,7 @@ import { Search, BookOpen, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { booksService } from "@/services/books";
 import { borrowsService } from "@/services/borrows";
-import api from "@/lib/api";
+import api from "@/lib/api_clean";
 import { useToast } from "@/hooks/use-toast";
 
 const BookCatalog = () => {

@@ -6,7 +6,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, Clock, AlertCircle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { borrowsService } from "@/services/borrows";
-import api from "@/lib/api";
+import { booksService } from "@/services/books";
+import api from "@/lib/api_clean";
 import { useToast } from "@/hooks/use-toast";
 
 type BorrowRecord = {
@@ -32,7 +33,19 @@ const UserDashboard = () => {
 			setIsLoading(true);
 			try {
 				const data = await borrowsService.myBorrows();
-				setBorrows(data || []);
+				const borrows = data || [];
+				// Fetch book metadata for each borrow (backend returns only book_id)
+				const bookIds = Array.from(new Set(borrows.map(b => b.book_id)));
+				const bookMap: Record<number, any> = {};
+				await Promise.all(bookIds.map(async (id) => {
+					try {
+						const book = await booksService.getBook(id);
+						bookMap[id] = book;
+					} catch (e) {
+						// ignore failures and leave metadata absent
+					}
+				}));
+				setBorrows(borrows.map(b => ({ ...b, book: bookMap[b.book_id] })));
 			} catch (err) {
 				console.error("Failed to load borrows:", err);
 				toast({ variant: "destructive", title: "Error", description: "Could not load your borrows." });

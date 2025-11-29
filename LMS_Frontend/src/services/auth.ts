@@ -1,4 +1,4 @@
-import api from "@/lib/api";
+import api from "@/lib/api_clean";
 
 export const authService = {
   login: async (username: string, password: string) => {
