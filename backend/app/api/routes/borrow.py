@@ -20,14 +20,27 @@ def borrow_book(req: BorrowRequest, db: Session = Depends(get_db), current_user=
     return borrow
 
 @router.post("/return/{borrow_id}", response_model=BorrowRead)
-def return_book(borrow_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def return_book(
+    borrow_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     service = BorrowService(db)
+
     try:
+        # This must return a Borrow object, not an ID
         borrow = service.return_book(borrow_id, current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    NotificationManager.get_instance().push({"type": "returned", "borrow_id": borrow.id})
+
+    # Now borrow is a full model instance
+    NotificationManager.get_instance().push({
+        "type": "returned",
+        "borrow_id": borrow.id
+    })
+
     return borrow
+
 
 
 @router.get("/me", response_model=list)
