@@ -16,7 +16,6 @@ const Register = () => {
     const [formData, setFormData] = useState({
         full_name: "",
         username: "",
-        email: "",
         password: "",
         role: "student",
     });
@@ -30,7 +29,9 @@ const Register = () => {
 
         try {
             const userData = {
-                ...formData,
+                username: formData.username,
+                password: formData.password,
+                full_name: formData.full_name,
                 role: roleParam ?? formData.role,
             };
 
@@ -74,7 +75,7 @@ const Register = () => {
 
                         {/* User Registration */}
                         <TabsContent value="user" className="space-y-4">
-                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("user"); }} className="space-y-4">
+                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("student"); }} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="full_name">Full Name</Label>
                                     <Input
@@ -97,17 +98,7 @@ const Register = () => {
                                         onChange={handleChange}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        placeholder="john@example.com"
-                                        required
-                                        onChange={handleChange}
-                                    />
-                                </div>
+                                {/* Email removed - backend does not expect email on register */}
                                 <div className="space-y-2">
                                     <Label htmlFor="password">Password</Label>
                                     <Input
@@ -132,7 +123,7 @@ const Register = () => {
 
                         {/* Librarian Registration */}
                         <TabsContent value="librarian" className="space-y-4">
-                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("librarian"); }} className="space-y-4">
+                                <form onSubmit={(e) => { e.preventDefault(); handleRegister("librarian"); }} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="lib_full_name">Full Name</Label>
                                     <Input
@@ -155,17 +146,7 @@ const Register = () => {
                                         onChange={handleChange}
                                     />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="lib_email">Email</Label>
-                                    <Input
-                                        id="lib_email"
-                                        name="email"
-                                        type="email"
-                                        placeholder="jane@library.com"
-                                        required
-                                        onChange={handleChange}
-                                    />
-                                </div>
+                                {/* Email removed - backend does not expect email on register */}
                                 <div className="space-y-2">
                                     <Label htmlFor="lib_password">Password</Label>
                                     <Input
