@@ -58,4 +58,5 @@ def register_user(
         full_name=payload.full_name,
         role=payload.role
     )
-    return UserResponse.model_validate(user)
+    return UserResponse.from_orm(user)
+    

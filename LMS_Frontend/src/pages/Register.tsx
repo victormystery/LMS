@@ -6,14 +6,17 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookOpen } from "lucide-react";
-import api from "@/lib/api";
+import { authService } from "@/services/auth";
+import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         full_name: "",
         username: "",
+        email: "",
         password: "",
         role: "student",
     });
@@ -22,49 +25,29 @@ const Register = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleRegister = async (e: React.FormEvent, roleParam?: string) => {
-        e.preventDefault();
+    const handleRegister = async (roleParam?: string) => {
         setIsLoading(true);
 
         try {
-            const selectedRole = formData.role || roleParam || "student";
-            const data = await api.register({
-                full_name: formData.full_name,
-                username: formData.username,
-                password: formData.password,
-                role: selectedRole,
+            const userData = {
+                ...formData,
+                role: roleParam ?? formData.role,
+            };
+
+            await authService.register(userData);
+
+            toast({
+                title: "Registration successful",
+                description: "Please sign in with your new account.",
             });
-
-            console.log("User registered:", data);
-
-            // Auto-login after successful registration
-            try {
-                const loginRes = await api.login({
-                    username: formData.username,
-                    password: formData.password,
-                });
-
-                if (loginRes?.access_token) {
-                    api.setToken(loginRes.access_token);
-                }
-                if (loginRes?.user) {
-                    api.saveUser(loginRes.user);
-                    if (loginRes.user.role === "librarian") {
-                        navigate("/librarian-dashboard");
-                    } else {
-                        navigate("/catalog");
-                    }
-                } else {
-                    navigate("/login");
-                }
-            } catch (err) {
-                // login failed - fall back to manual login
-                console.warn("Auto-login failed:", err);
-                navigate("/login");
-            }
+            navigate("/");
         } catch (error) {
-            console.error(error);
-            alert((error as Error).message);
+            console.error("Registration failed:", error);
+            toast({
+                variant: "destructive",
+                title: "Registration failed",
+                description: "Please check your details and try again.",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -91,7 +74,7 @@ const Register = () => {
 
                         {/* User Registration */}
                         <TabsContent value="user" className="space-y-4">
-                            <form onSubmit={(e) => handleRegister(e, "user")} className="space-y-4">
+                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("user"); }} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="full_name">Full Name</Label>
                                     <Input
@@ -115,23 +98,16 @@ const Register = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="roles">Role</Label>
-                                    <select
-                                        id="roles"
-                                        name="role"
+                                    <Label htmlFor="email">Email</Label>
+                                    <Input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="john@example.com"
                                         required
-                                        aria-label="Role"
-                                        title="Role"
-                                        value={formData.role}
-                                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                        className="w-full border border-input rounded-md px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                                    >
-                                        <option value="">Select role</option>
-                                        <option value="student">Student</option>
-                                        <option value="staff">Staff</option>
-                                    </select>
+                                        onChange={handleChange}
+                                    />
                                 </div>
-
                                 <div className="space-y-2">
                                     <Label htmlFor="password">Password</Label>
                                     <Input
@@ -156,7 +132,7 @@ const Register = () => {
 
                         {/* Librarian Registration */}
                         <TabsContent value="librarian" className="space-y-4">
-                            <form onSubmit={(e) => handleRegister(e, "librarian")} className="space-y-4">
+                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("librarian"); }} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="lib_full_name">Full Name</Label>
                                     <Input
@@ -175,6 +151,17 @@ const Register = () => {
                                         name="username"
                                         type="text"
                                         placeholder="librarian01"
+                                        required
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lib_email">Email</Label>
+                                    <Input
+                                        id="lib_email"
+                                        name="email"
+                                        type="email"
+                                        placeholder="jane@library.com"
                                         required
                                         onChange={handleChange}
                                     />

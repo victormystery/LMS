@@ -1,44 +1,46 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, BookOpen, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { booksService } from "@/services/books";
 import api from "@/lib/api";
-
-
+import { useToast } from "@/hooks/use-toast";
 
 const BookCatalog = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [books, setBooks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    const fetchBooks = async () => {
       try {
-        const data = await api.fetchWithAuth(`/api/books/`);
-        if (!mounted) return;
-        setBooks(data || []);
-      } catch (err: any) {
-        console.error("Failed to load books", err);
-        if (mounted) setError(err.message || "Failed to load books");
+        const data = await booksService.getBooks();
+        setBooks(data);
+      } catch (err) {
+        console.error("Failed to fetch books:", err);
+        setError("Failed to load books. Please try again later.");
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load books. Please try again later.",
+        });
       } finally {
-        if (mounted) setLoading(false);
+        setIsLoading(false);
       }
     };
-    load();
-    return () => { mounted = false; };
-  }, []);
 
-  const filteredBooks = books.filter((book) =>
-    (book.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (book.author || "").toLowerCase().includes(searchTerm.toLowerCase())
+    fetchBooks();
+  }, [toast]);
+
+  const filteredBooks = books.filter(book =>
+    book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    book.author.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -84,7 +86,7 @@ const BookCatalog = () => {
         </div>
 
         {/* Books Grid */}
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-12">Loading books...</div>
         ) : error ? (
           <div className="text-center text-red-500 py-12">{error}</div>

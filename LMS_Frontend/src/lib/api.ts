@@ -19,7 +19,7 @@ async function request(path: string, options: RequestInit = {}) {
     let errMsg = "Request failed";
     try {
       const json = await res.json();
-      errMsg = json.detail || json.message || JSON.stringify(json);
+      errMsg = (json && (json.detail || json.message)) || JSON.stringify(json);
     } catch (e) {
       errMsg = res.statusText || errMsg;
     }
@@ -27,7 +27,49 @@ async function request(path: string, options: RequestInit = {}) {
     error.status = res.status;
     throw error;
   }
-  return res.json();
+  // try to parse JSON, but some endpoints may return empty body
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// axios-like convenience wrappers that return { data }
+async function get(path: string, options: RequestInit = {}) {
+  const data = await request(path, { ...options, method: "GET" });
+  return { data };
+}
+
+async function post(path: string, body?: any, options: RequestInit = {}) {
+  const headers: any = options.headers ? { ...(options.headers as any) } : {};
+  if (!(body instanceof FormData)) headers["Content-Type"] = "application/json";
+  const opts: RequestInit = {
+    ...options,
+    method: "POST",
+    headers,
+    body: body instanceof FormData ? body : JSON.stringify(body),
+  };
+  const data = await request(path, opts);
+  return { data };
+}
+
+async function put(path: string, body?: any, options: RequestInit = {}) {
+  const headers: any = options.headers ? { ...(options.headers as any) } : {};
+  if (!(body instanceof FormData)) headers["Content-Type"] = "application/json";
+  const opts: RequestInit = {
+    ...options,
+    method: "PUT",
+    headers,
+    body: body instanceof FormData ? body : JSON.stringify(body),
+  };
+  const data = await request(path, opts);
+  return { data };
+}
+
+async function del(path: string, options: RequestInit = {}) {
+  const data = await request(path, { ...options, method: "DELETE" });
+  return { data };
 }
 
 export async function register(payload: RegisterPayload) {
@@ -81,4 +123,23 @@ export function getUser(): any | null {
   }
 }
 
-export default { API_URL, register, login, setToken, getToken, logout, fetchWithAuth, saveUser, getUser };
+const api = {
+  API_URL,
+  request,
+  get,
+  post,
+  put,
+  delete: del,
+  register,
+  login,
+  setToken,
+  getToken,
+  logout,
+  fetchWithAuth,
+  saveUser,
+  getUser,
+};
+
+export default api;
+
+export { API_URL };
