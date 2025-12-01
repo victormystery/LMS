@@ -45,6 +45,14 @@ class BorrowService:
         if book and book.available_copies < book.total_copies:
             book.available_copies += 1
             self.db.commit()
+            # Notify reservation queue that a copy became available
+            try:
+                from backend.app.services.reservation import ReservationService
+                svc = ReservationService(self.db)
+                svc.notify_available(book.id)
+            except Exception:
+                # don't let notification errors block return
+                pass
 
         # Calculate late fee
         fee = 0

@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BookOpen, Plus, Users, BookMarked, AlertCircle, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { booksService } from "@/services/books";
+import { booksService } from "@/lib/api_clean";
 import { useToast } from "@/hooks/use-toast";
 
 type BookRow = {
@@ -19,24 +19,24 @@ type BookRow = {
   isbn: string;
   total_copies: number;
   available_copies: number;
+  description?: string;
 };
 
 const LibrarianDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [books, setBooks] = useState<BookRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
   const [deletingIsbn, setDeletingIsbn] = useState<string | null>(null);
+  const [isAddBookOpen, setIsAddBookOpen] = useState(false);
 
-  const overdueCount = 0; // Backend doesn't expose global overdue list; keep 0 or implement backend endpoint
+  const overdueCount = 0; // backend placeholder
 
   const loadBooks = async () => {
     setLoading(true);
     try {
-      const data = await booksService.getBooks();
-      setBooks(data || []);
+      const res = await booksService.list();
+      setBooks(res.data || []);
     } catch (err) {
       console.error("Failed to load books:", err);
       toast({ variant: "destructive", title: "Error", description: "Could not load catalog." });
@@ -45,12 +45,12 @@ const LibrarianDashboard = () => {
     }
   };
 
-  // load on mount
-  useEffect(() => { loadBooks(); }, []);
+  useEffect(() => {
+    loadBooks();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -58,17 +58,15 @@ const LibrarianDashboard = () => {
             <h1 className="text-xl font-bold">Librarian Dashboard</h1>
           </div>
           <Button variant="ghost" onClick={() => navigate("/")}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            <LogOut className="w-4 h-4 mr-2" /> Logout
           </Button>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-3 mb-8">
-            <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Books</CardTitle>
               <BookMarked className="h-4 w-4 text-muted-foreground" />
@@ -84,7 +82,9 @@ const LibrarianDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{books.reduce((sum, b) => sum + (b.total_copies - b.available_copies), 0)}</div>
+              <div className="text-2xl font-bold">
+                {books.reduce((sum, b) => sum + (b.total_copies - b.available_copies), 0)}
+              </div>
               <p className="text-xs text-muted-foreground">Currently borrowed across catalog</p>
             </CardContent>
           </Card>
@@ -114,8 +114,7 @@ const LibrarianDashboard = () => {
               <Dialog open={isAddBookOpen} onOpenChange={setIsAddBookOpen}>
                 <DialogTrigger asChild>
                   <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Book
+                    <Plus className="w-4 h-4 mr-2" /> Add Book
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -123,17 +122,14 @@ const LibrarianDashboard = () => {
                     <DialogTitle>Add New Book</DialogTitle>
                     <DialogDescription>Enter the details of the book to add to the catalog.</DialogDescription>
                   </DialogHeader>
-                  <AddBookForm onClose={() => setIsAddBookOpen(false)} onCreated={async () => {
-                    setIsAddBookOpen(false);
-                    await loadBooks();
-                  }} />
+                  <AddBookForm onClose={() => setIsAddBookOpen(false)} onCreated={loadBooks} />
                 </DialogContent>
               </Dialog>
             </div>
 
             <Card>
               <CardContent className="p-0">
-                  <Table>
+                <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
@@ -152,29 +148,34 @@ const LibrarianDashboard = () => {
                         <TableCell className="text-muted-foreground">{book.isbn}</TableCell>
                         <TableCell>{book.total_copies}</TableCell>
                         <TableCell>
-                          <Badge variant={book.available_copies > 0 ? "default" : "secondary"}>
-                            {book.available_copies}
-                          </Badge>
+                          <Badge variant={book.available_copies > 0 ? "default" : "secondary"}>{book.available_copies}</Badge>
                         </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={async () => {
-                            // TODO: wire edit
-                            toast({ title: "Edit", description: "Edit is not implemented yet." });
-                          }}>Edit</Button>
-                          <Button variant="ghost" size="sm" onClick={async () => {
-                            if (!confirm(`Remove book ${book.title}?`)) return;
-                            try {
-                              setDeletingIsbn(book.isbn);
-                              await booksService.deleteBook(book.isbn);
-                              toast({ title: "Deleted", description: `${book.title} removed.` });
-                              await loadBooks();
-                            } catch (err) {
-                              console.error("Delete failed:", err);
-                              toast({ variant: "destructive", title: "Delete failed", description: (err as any)?.message || "Could not delete book." });
-                            } finally {
-                              setDeletingIsbn(null);
-                            }
-                          }}>{deletingIsbn === book.isbn ? "Removing..." : "Remove"}</Button>
+                        <TableCell className="flex gap-2">
+                          <EditBookButton book={book} onUpdated={loadBooks} />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              if (!confirm(`Remove book ${book.title}?`)) return;
+                              try {
+                                setDeletingIsbn(book.isbn);
+                                await booksService.deleteBook(book.isbn);
+                                toast({ title: "Deleted", description: `${book.title} removed.` });
+                                await loadBooks();
+                              } catch (err) {
+                                console.error("Delete failed:", err);
+                                toast({
+                                  variant: "destructive",
+                                  title: "Delete failed",
+                                  description: (err as any)?.message || "Could not delete book.",
+                                });
+                              } finally {
+                                setDeletingIsbn(null);
+                              }
+                            }}
+                          >
+                            {deletingIsbn === book.isbn ? "Removing..." : "Remove"}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -187,17 +188,11 @@ const LibrarianDashboard = () => {
           {/* Borrowed Books Tab */}
           <TabsContent value="borrowed" className="space-y-4">
             <h2 className="text-2xl font-bold">Borrowed Books Tracking</h2>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-sm text-muted-foreground">Borrowed counts are derived from catalog availability.</div>
-              </CardContent>
-            </Card>
-
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {books.filter(b => (b.total_copies - b.available_copies) > 0).length === 0 ? (
+              {books.filter((b) => b.total_copies - b.available_copies > 0).length === 0 ? (
                 <div className="text-muted-foreground col-span-full">No currently borrowed titles.</div>
               ) : (
-                books.filter(b => (b.total_copies - b.available_copies) > 0).map((b) => (
+                books.filter((b) => b.total_copies - b.available_copies > 0).map((b) => (
                   <Card key={b.id}>
                     <CardHeader>
                       <CardTitle className="text-lg">{b.title}</CardTitle>
@@ -226,18 +221,20 @@ const LibrarianDashboard = () => {
   );
 };
 
+// Add Book Form
 const AddBookForm = ({ onClose, onCreated }: { onClose: () => void; onCreated?: () => Promise<void> }) => {
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [isbn, setIsbn] = useState("");
   const [copies, setCopies] = useState(1);
+  const [description, setDescription] = useState("");
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
     setLoading(true);
     try {
-      await booksService.createBook({ title, author, isbn, total_copies: copies });
+      await booksService.createBook({ title, author, isbn, total_copies: copies, description });
       toast({ title: "Book added", description: `${title} added to catalog.` });
       if (onCreated) await onCreated();
       onClose();
@@ -267,11 +264,79 @@ const AddBookForm = ({ onClose, onCreated }: { onClose: () => void; onCreated?: 
         <Label htmlFor="copies">Number of Copies</Label>
         <Input id="copies" type="number" min={1} value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary of the book" />
+        <p className="text-xs text-muted-foreground">Optional: Add a short description of the book.</p>
+      </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button onClick={handleCreate} disabled={loading}>{loading ? "Adding..." : "Add Book"}</Button>
       </div>
     </div>
+  );
+};
+
+// Edit Book Button
+const EditBookButton = ({ book, onUpdated }: { book: BookRow; onUpdated: () => void }) => {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(book.title);
+  const [author, setAuthor] = useState(book.author);
+  const [copies, setCopies] = useState(book.total_copies);
+  const [description, setDescription] = useState(book.description || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleUpdate = async () => {
+    setLoading(true);
+    try {
+      await booksService.updateBook(book.id, { title, author, total_copies: copies, description });
+      toast({ title: "Book updated", description: `${title} updated.` });
+      if (onUpdated) await onUpdated();
+      setOpen(false);
+    } catch (err) {
+      console.error("Update failed:", err);
+      toast({ variant: "destructive", title: "Update failed", description: (err as any)?.message || "Could not update book." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">Edit</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Book</DialogTitle>
+          <DialogDescription>Update book information.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-title">Title</Label>
+            <Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Book title" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-author">Author</Label>
+            <Input id="edit-author" value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-copies">Number of Copies</Label>
+            <Input id="edit-copies" type="number" min={1} value={copies} onChange={(e) => setCopies(Number(e.target.value))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-description">Description</Label>
+            <Input id="edit-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief summary of the book" />
+            <p className="text-xs text-muted-foreground">Optional: Update the book description.</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdate} disabled={loading}>{loading ? "Updating..." : "Update Book"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };
 
