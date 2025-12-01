@@ -7,7 +7,7 @@ import { Search, BookOpen, User, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { booksService } from "@/services/books";
 import { borrowsService } from "@/services/borrows";
-import api from "@/lib/api_clean";
+import api from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 const BookCatalog = () => {
@@ -63,6 +63,25 @@ const BookCatalog = () => {
     }
   };
 
+  const handleReserve = async (bookId: number, title: string, e?: React.MouseEvent<HTMLButtonElement>) => {
+    // prevent the Card's onClick from firing (which navigates to the book detail)
+    e?.stopPropagation();
+    try {
+      await booksService.reserveBook(bookId);
+      toast({ title: "Reserved", description: `You will be notified when \"${title}\" is available.` });
+      // Refresh book list to reflect reservation
+      setIsLoading(true);
+      const data = await booksService.getBooks();
+      setBooks(data);
+      // Notify librarian dashboard (custom event)
+      window.dispatchEvent(new CustomEvent("reservation:created", { detail: { bookId, title } }));
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed", description: (err as any)?.message || "Could not reserve" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredBooks = books.filter(book =>
     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     book.author.toLowerCase().includes(searchTerm.toLowerCase())
@@ -78,7 +97,7 @@ const BookCatalog = () => {
             <h1 className="text-xl font-bold">Library System</h1>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/my-books")}> 
+            <Button variant="ghost" onClick={() => navigate("/my-books")}>
               <User className="w-4 h-4 mr-2" />
               My Books
             </Button>
@@ -121,40 +140,40 @@ const BookCatalog = () => {
               <div className="text-center col-span-full py-12 text-muted-foreground">No books found</div>
             ) : (
               filteredBooks.map((book) => (
-            <Card 
-              key={book.id} 
-              className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(`/book/${book.id}`)}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{book.title}</CardTitle>
-                    <CardDescription className="mt-1">{book.author}</CardDescription>
-                  </div>
+                <Card
+                  key={book.id}
+                  className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/book/${book.id}`)}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">{book.title}</CardTitle>
+                        <CardDescription className="mt-1">{book.author}</CardDescription>
+                      </div>
                       <Badge variant={book.available_copies > 0 ? "default" : "secondary"}>
                         {book.available_copies > 0 ? "available" : "unavailable"}
                       </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-2 text-sm">
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    <div className="space-y-2 text-sm">
                       <p className="text-muted-foreground">ISBN: {book.isbn}</p>
                       <p className="text-muted-foreground">Available copies: {book.available_copies}</p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                      {book.available_copies > 0 ? (
-                        <Button className="w-full" onClick={(e) => handleBorrow(book.id, e)} disabled={borrowLoadingId === book.id}>
-                          {borrowLoadingId === book.id ? "Borrowing..." : "Borrow Book"}
-                        </Button>
-                      ) : (
-                        <Button className="w-full" variant="outline" onClick={(e) => { e.stopPropagation(); /* Reserve action */ }}>
-                          Reserve
-                        </Button>
-                      )}
-              </CardFooter>
-            </Card>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    {book.available_copies > 0 ? (
+                      <Button className="w-full" onClick={(e) => handleBorrow(book.id, e)} disabled={borrowLoadingId === book.id}>
+                        {borrowLoadingId === book.id ? "Borrowing..." : "Borrow Book"}
+                      </Button>
+                    ) : (
+                      <Button className="w-full" variant="outline" onClick={() => handleReserve(book.id, book.title)}>
+                        Reserve
+                      </Button>
+                    )}
+                  </CardFooter>
+                </Card>
               ))
             )}
           </div>

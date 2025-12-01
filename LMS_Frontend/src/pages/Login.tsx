@@ -23,7 +23,19 @@ const Login = () => {
       const password = credentials.password;
       const data = await authService.login(username, password);
       if (data?.access_token) {
-        api.setToken(data.access_token);
+        // Store token under the username immediately so it won't be saved under "default"
+        api.setToken(data.access_token, username);
+        // Also ask backend to set a cookie for SSE authentication (send credentials)
+        try {
+          await fetch(`${api.API_URL}/api/auth/set-cookie`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: data.access_token }),
+          });
+        } catch (e) {
+          // ignore cookie set failure
+        }
       }
       if (data?.user) {
         api.saveUser(data.user);
@@ -80,7 +92,7 @@ const Login = () => {
 
             {/* USER LOGIN TAB */}
             <TabsContent value="user" className="space-y-4">
-                <form onSubmit={(e) => { e.preventDefault(); handleLogin("user"); }} className="space-y-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleLogin("user"); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="user-username">Username</Label>
                   <Input

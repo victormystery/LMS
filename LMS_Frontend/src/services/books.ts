@@ -63,6 +63,15 @@ export const booksService = {
     });
     return resp as { detail: string } | null;
   },
+
+  reserveBook: async (bookId: number) => {
+    const resp = await api.fetchWithAuth(`/api/reservations/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ book_id: bookId }),
+    });
+    return resp;
+  },
 };
 
 export default booksService;

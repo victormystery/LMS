@@ -41,6 +41,7 @@ class Reservation(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     book_id = Column(Integer, ForeignKey("books.id"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    notified = Column(Integer, default=0)
 
     user = relationship("User")
     book = relationship("Book")

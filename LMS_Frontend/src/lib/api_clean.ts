@@ -27,7 +27,6 @@ async function request(path: string, options: RequestInit = {}) {
     error.status = res.status;
     throw error;
   }
-  // try to parse JSON, but some endpoints may return empty body
   try {
     return await res.json();
   } catch {
@@ -35,9 +34,12 @@ async function request(path: string, options: RequestInit = {}) {
   }
 }
 
-// axios-like convenience wrappers that return { data }
+// Convenience wrappers
 async function get(path: string, options: RequestInit = {}) {
-  const data = await request(path, { ...options, method: "GET" });
+  const token = getToken();
+  const headers = options.headers ? { ...(options.headers as any) } : {};
+  if (token && !headers["Authorization"]) headers["Authorization"] = `Bearer ${token}`;
+  const data = await request(path, { ...options, method: "GET", headers });
   return { data };
 }
 
@@ -72,56 +74,132 @@ async function del(path: string, options: RequestInit = {}) {
   return { data };
 }
 
+// Auth functions
 export async function register(payload: RegisterPayload) {
-  return request(`/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return post(`/api/auth/register`, payload);
 }
 
 export async function login(payload: LoginPayload) {
-  return request(`/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  return post(`/api/auth/login`, payload);
 }
 
-export function setToken(token: string) {
-  localStorage.setItem("access_token", token);
+export function setToken(token: string, username?: string) {
+  // Store active token in sessionStorage (per-tab)
+  sessionStorage.setItem("access_token", token);
+  // Also store in the tokens map under the provided username (if any) or the current user
+  try {
+    const u = username ? { username } : getUser();
+    const name = u?.username || "default";
+    const raw = localStorage.getItem("access_tokens");
+    const map = raw ? JSON.parse(raw) : {};
+    map[name] = token;
+    localStorage.setItem("access_tokens", JSON.stringify(map));
+  } catch {}
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem("access_token");
+  // Prefer token for the currently active user (if any)
+  try {
+    const u = getUser();
+    if (u && u.username) {
+      const raw = localStorage.getItem("access_tokens");
+      if (raw) {
+        const map = JSON.parse(raw || "{}");
+        if (map[u.username]) return map[u.username];
+      }
+    }
+  } catch {}
+  // Fallback to the per-tab session token, then to localStorage for compatibility
+  return sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
 }
 
-export function logout() {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("current_user");
-}
+
 
 export async function fetchWithAuth(path: string, options: RequestInit = {}) {
   const token = getToken();
   const headers = options.headers ? { ...(options.headers as any) } : {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  return request(path, { ...options, headers });
+  // include credentials so cookies (e.g., access_token for SSE) are sent
+  const opts = { ...options, headers, credentials: "include" as RequestCredentials };
+  return request(path, opts);
 }
 
 export function saveUser(user: any) {
   try {
-    localStorage.setItem("current_user", JSON.stringify(user));
+    // Save the active user in sessionStorage (per-tab) and keep a map of known users to support multiple sessions
+    sessionStorage.setItem("current_user", JSON.stringify(user));
+    try {
+      const raw = localStorage.getItem("known_users");
+      const map = raw ? JSON.parse(raw) : {};
+      if (user?.username) map[user.username] = user;
+      localStorage.setItem("known_users", JSON.stringify(map));
+    } catch {}
   } catch {}
 }
 
 export function getUser(): any | null {
   try {
-    const v = localStorage.getItem("current_user");
+    const v = sessionStorage.getItem("current_user");
     return v ? JSON.parse(v) : null;
   } catch {
     return null;
   }
 }
+
+// Optional: remove a user's token and optionally clear active user
+export function logout(username?: string) {
+  try {
+    if (username) {
+      const raw = localStorage.getItem("access_tokens");
+      if (raw) {
+        const map = JSON.parse(raw);
+        delete map[username];
+        localStorage.setItem("access_tokens", JSON.stringify(map));
+      }
+      const known = localStorage.getItem("known_users");
+      if (known) {
+        const map = JSON.parse(known);
+        delete map[username];
+        localStorage.setItem("known_users", JSON.stringify(map));
+      }
+    } else {
+      // Default behaviour: remove token for active user and clear active user
+      const active = getUser();
+      const activeName = active?.username;
+      if (activeName) {
+        const raw = localStorage.getItem("access_tokens");
+        if (raw) {
+          const map = JSON.parse(raw);
+          delete map[activeName];
+          localStorage.setItem("access_tokens", JSON.stringify(map));
+        }
+      }
+      // Remove per-tab active user and token
+      sessionStorage.removeItem("current_user");
+      sessionStorage.removeItem("access_token");
+    }
+    // keep backward-compatible single token removal
+    localStorage.removeItem("access_token");
+  } catch {}
+}
+
+// Books API
+export const booksService = {
+  list: (q?: string) => get(`/api/books${q ? `?q=${q}` : ""}`),
+  createBook: (data: any) => fetchWithAuth(`/api/books`, { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+  updateBook: (id: number, data: any) => fetchWithAuth(`/api/books/${id}`, { method: "PUT", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+  deleteBook: (isbn: string) => fetchWithAuth(`/api/books/${isbn}`, { method: "DELETE" }),
+  borrowBook: (bookId: number) => fetchWithAuth(`/api/borrows`, { method: "POST", body: JSON.stringify({ book_id: bookId }), headers: { "Content-Type": "application/json" } }),
+  reserveBook: (bookId: number) => fetchWithAuth(`/api/reservations/`, { method: "POST", body: JSON.stringify({ book_id: bookId }), headers: { "Content-Type": "application/json" } }),
+  listReservations: (bookId?: number, page?: number, pageSize?: number) => {
+    const qs: string[] = [];
+    if (bookId !== undefined) qs.push(`book_id=${encodeURIComponent(String(bookId))}`);
+    if (page !== undefined) qs.push(`page=${encodeURIComponent(String(page))}`);
+    if (pageSize !== undefined) qs.push(`page_size=${encodeURIComponent(String(pageSize))}`);
+    const qstr = qs.length ? `?${qs.join("&")}` : "";
+    return fetchWithAuth(`/api/reservations/${qstr}`);
+  },
+};
 
 const api = {
   API_URL,
@@ -138,8 +216,8 @@ const api = {
   fetchWithAuth,
   saveUser,
   getUser,
+  booksService,
 };
 
 export default api;
-
 export { API_URL };

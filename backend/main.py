@@ -9,6 +9,8 @@ from backend.app.api.routes import auth as routes_auth
 from backend.app.api.routes import user as routes_users
 from backend.app.api.routes import books as routes_books
 from backend.app.api.routes import borrow as routes_borrow
+from backend.app.api.routes import reservations as routes_reservations
+from backend.app.api.routes import notifications as routes_notifications
 from backend.app.services.notification import NotificationManager
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -38,6 +40,8 @@ app.include_router(routes_auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(routes_users.router, prefix="/api/users", tags=["users"])
 app.include_router(routes_books.router, prefix="/api/books", tags=["books"])
 app.include_router(routes_borrow.router, prefix="/api/borrows", tags=["borrows"])
+app.include_router(routes_reservations.router, prefix="/api/reservations", tags=["reservations"])
+app.include_router(routes_notifications.router, prefix="/api/notifications", tags=["notifications"])
 
 @app.get("/healthz")
 def health():

@@ -20,7 +20,7 @@ def read_all_users(
             detail="You do not have permission to view all users.",
         )
 
-    users = crud_user.get_all_users(db, current_user)
+    users = crud_user.get_all_users(db)
     return [
         {
             "id": user.id,

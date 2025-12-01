@@ -123,7 +123,7 @@ const Register = () => {
 
                         {/* Librarian Registration */}
                         <TabsContent value="librarian" className="space-y-4">
-                                <form onSubmit={(e) => { e.preventDefault(); handleRegister("librarian"); }} className="space-y-4">
+                            <form onSubmit={(e) => { e.preventDefault(); handleRegister("librarian"); }} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="lib_full_name">Full Name</Label>
                                     <Input
