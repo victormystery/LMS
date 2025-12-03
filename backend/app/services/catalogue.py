@@ -47,11 +47,42 @@ class LibraryCatalogue:
         if existing:
             existing.total_copies += book_in.total_copies
             existing.available_copies += book_in.total_copies
+            # update category/description and metadata if provided
+            if getattr(book_in, "category", None):
+                existing.category = book_in.category
+            if getattr(book_in, "description", None):
+                existing.description = book_in.description
+            if getattr(book_in, "publisher", None):
+                existing.publisher = book_in.publisher
+            if getattr(book_in, "publication_year", None):
+                existing.publication_year = book_in.publication_year
+            if getattr(book_in, "book_format", None):
+                existing.book_format = book_in.book_format
+            if getattr(book_in, "shelf", None):
+                existing.shelf = book_in.shelf
+            if getattr(book_in, "subcategory", None):
+                existing.subcategory = book_in.subcategory
+            if getattr(book_in, "cover_url", None):
+                existing.cover_url = book_in.cover_url
             self.db.add(existing)
             self.db.commit()
             self.notify("book_updated", {"isbn": existing.isbn})
             return existing
-        b = models.Book(title=book_in.title, author=book_in.author, isbn=book_in.isbn, total_copies=book_in.total_copies, available_copies=book_in.total_copies, description=book_in.description)
+        b = models.Book(
+            title=book_in.title,
+            author=book_in.author,
+            isbn=book_in.isbn,
+            total_copies=book_in.total_copies,
+            available_copies=book_in.total_copies,
+            description=book_in.description,
+            category=getattr(book_in, "category", None),
+            publisher=getattr(book_in, "publisher", None),
+            publication_year=getattr(book_in, "publication_year", None),
+            book_format=getattr(book_in, "book_format", None),
+            shelf=getattr(book_in, "shelf", None),
+            subcategory=getattr(book_in, "subcategory", None),
+            cover_url=getattr(book_in, "cover_url", None),
+        )
         self.db.add(b)
         self.db.commit()
         self.db.refresh(b)

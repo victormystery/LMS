@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from backend.app.api.depend import get_current_user
@@ -44,6 +45,21 @@ def return_book(
 
 
 @router.get("/me", response_model=list)
-def my_borrows(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    records = list_user_borrows(db, current_user.id)
+def my_borrows(include_returned: bool = False, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    """Return the current user's borrows.
+
+    By default only active (not yet returned) borrows are returned. Pass
+    `?include_returned=true` to get returned records as well.
+    """
+    records = list_user_borrows(db, current_user.id, include_returned)
+    return records
+
+@router.get("/overdue", response_model=list)
+def overdue_borrows(db: Session = Depends(get_db)):
+    now = datetime.utcnow()
+    # Overdue: not returned, due_date < now
+    records = db.query(BorrowRead.__config__.orm_model).filter(
+        BorrowRead.__config__.orm_model.returned_at == None,
+        BorrowRead.__config__.orm_model.due_date < now
+    ).all()
     return records

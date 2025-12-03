@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.background import BackgroundTasks
+from fastapi.staticfiles import StaticFiles
+import os
 
 from backend.app.core.config import settings
 from backend.app.db.session import engine, SessionLocal
@@ -42,6 +44,11 @@ app.include_router(routes_books.router, prefix="/api/books", tags=["books"])
 app.include_router(routes_borrow.router, prefix="/api/borrows", tags=["borrows"])
 app.include_router(routes_reservations.router, prefix="/api/reservations", tags=["reservations"])
 app.include_router(routes_notifications.router, prefix="/api/notifications", tags=["notifications"])
+
+# serve static files (covers/uploads)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/healthz")
 def health():

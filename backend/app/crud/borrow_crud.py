@@ -20,9 +20,16 @@ def get_borrow(db: Session, borrow_id: int) -> models.Borrow | None:
     return db.query(models.Borrow).filter(models.Borrow.id == borrow_id).first()
 
 
-def list_user_borrows(db: Session, user_id: int) -> list[models.Borrow]:
-    """List all borrow records for a given user."""
-    return db.query(models.Borrow).filter(models.Borrow.user_id == user_id).all()
+def list_user_borrows(db: Session, user_id: int, include_returned: bool = False) -> list[models.Borrow]:
+    """List borrow records for a given user.
+
+    By default this returns only active borrows (not yet returned). Set
+    `include_returned=True` to include returned records as well.
+    """
+    q = db.query(models.Borrow).filter(models.Borrow.user_id == user_id)
+    if not include_returned:
+        q = q.filter(models.Borrow.returned_at == None)
+    return q.all()
 
 
 def set_returned(db: Session, borrow: models.Borrow) -> models.Borrow:

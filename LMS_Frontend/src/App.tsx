@@ -25,7 +25,7 @@ const App = () => {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
           <Toaster />
           <Sonner />
-          <NotificationsBell />
+
         </div>
         <BrowserRouter>
           <Routes>
