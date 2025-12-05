@@ -1,4 +1,4 @@
-# app/core/auth.py
+# app/api/depend.py
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -46,24 +46,5 @@ async def get_current_user(
     return user
 
 
-# Role-based dependency
-def require_librarian(
-    current_user: Annotated[any, Depends(get_current_user)]
-):
-    """
-    Only allow users with role == 'librarian'
-    """
-    if getattr(current_user, "role", None) != "librarian":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Librarian access required"
-        )
-    return current_user
-
-
-# Optional: other roles
-require_admin = lambda user=Depends(get_current_user): (
-    user if user.role == "admin" else (_ for _ in ()).throw(
-        HTTPException(status_code=403, detail="Admin access required")
-    )
-)
+# Legacy support - import from middleware for new code
+from backend.app.middleware.auth import require_librarian, require_admin
