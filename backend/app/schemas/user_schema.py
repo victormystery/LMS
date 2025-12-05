@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class UserCreate(BaseModel):
@@ -9,14 +9,13 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     username: str
     full_name: Optional[str]
     role: str
     is_active: bool
-
-    class Config:
-        orm_mode = True
 
 
 class UserLogin(BaseModel):
@@ -30,12 +29,11 @@ class Token(BaseModel):
 
 
 class TokenUserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     access_token: str
     token_type: str
     user: UserResponse
-
-    class Config:
-        orm_mode = True
 
 
 class TokenData(BaseModel):

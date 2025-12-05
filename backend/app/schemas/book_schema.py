@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class BookCreate(BaseModel):
@@ -9,6 +9,8 @@ class BookCreate(BaseModel):
     description: Optional[str] = None
 
 class BookRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     id: int
     title: str
     author: str
@@ -16,9 +18,6 @@ class BookRead(BaseModel):
     total_copies: int
     available_copies: int
     description: Optional[str]
-
-    class Config:
-        orm_mode = True
 
 class BookUpdate(BaseModel):
     title: Optional[str]
