@@ -12,14 +12,14 @@ class BorrowService:
         book = crud_book.get_book(self.db, book_id)
         if not book:
             raise ValueError("book not found")
-        if book.available_copies <= 0:
+        if int(book.available_copies) <= 0:  # type: ignore
             raise ValueError("no copies available")
         # check user's active borrows
-        active = self.db.query(models.Borrow).filter(models.Borrow.user_id == user.id, models.Borrow.returned_at == None).count()
+        active = self.db.query(models.Borrow).filter(models.Borrow.user_id == user.id, models.Borrow.returned_at.is_(None)).count()
         if hasattr(user, "max_borrow_limit") and active >= user.max_borrow_limit():
             raise ValueError("borrow limit reached")
         # decrement
-        book.available_copies -= 1
+        book.available_copies -= 1  # type: ignore
         self.db.add(book)
         self.db.commit()
         borrow = crud_borrow.create_borrow(self.db, user.id, book_id)
@@ -31,10 +31,10 @@ class BorrowService:
         if not borrow:
             raise ValueError("Borrow record not found")
 
-        if borrow.user_id != user_id:
+        if borrow.user_id != user_id:  # type: ignore
             raise ValueError("You cannot return another user's borrow")
 
-        if borrow.returned_at:
+        if borrow.returned_at:  # type: ignore
             raise ValueError("Already returned")
 
         # CORRECT: pass both db and borrow object
@@ -42,24 +42,30 @@ class BorrowService:
 
         # Update book copies
         book = self.db.query(models.Book).filter(models.Book.id == borrow.book_id).first()
-        if book and book.available_copies < book.total_copies:
-            book.available_copies += 1
-            self.db.commit()
+        if book is not None:
+            if book.available_copies < book.total_copies:  # type: ignore
+                book.available_copies += 1  # type: ignore
+                self.db.commit()
             # Notify reservation queue that a copy became available
             try:
                 from backend.app.services.reservation import ReservationService
                 svc = ReservationService(self.db)
-                svc.notify_available(book.id)
+                svc.notify_available(book.id)  # type: ignore
             except Exception:
                 # don't let notification errors block return
                 pass
 
         # Calculate late fee
         fee = 0
-        if borrow.returned_at and borrow.due_date and borrow.returned_at > borrow.due_date:
-            days = (borrow.returned_at - borrow.due_date).days
-            fee = days * 1
-            borrow.fee_applied = fee
+        if borrow.returned_at and borrow.due_date and borrow.returned_at > borrow.due_date:  # type: ignore
+            time_diff = borrow.returned_at - borrow.due_date  # type: ignore
+            hours_overdue = int(time_diff.total_seconds() / 3600)
+            if hours_overdue < 1 and time_diff.total_seconds() > 0:
+                hours_overdue = 1
+            # Initial fee of £5 + £1 for each hour overdue
+            fee = 5 + (hours_overdue * 1)
+            borrow.fee_applied = fee  # type: ignore
+            borrow.payment_status = "unpaid"  # type: ignore
             self.db.commit()
 
         return borrow
@@ -75,7 +81,7 @@ class FeeDecorator:
     def borrow(self, user, book_id: int):
         return self.service.borrow(user, book_id)
 
-    def return_book(self, borrow_id: int):
-        borrow = self.service.return_book(borrow_id)
+    def return_book(self, borrow_id: int, user_id: int):
+        borrow = self.service.return_book(borrow_id, user_id)
         # fee already calculated inside service; this decorator could add reservation fees etc.
         return borrow

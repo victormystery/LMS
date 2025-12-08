@@ -1,6 +1,9 @@
-import api from "@/lib/api_clean";
+import api, { absoluteUrl } from "@/lib/api_clean";
 
-export type BorrowRequest = {
+// ------------------------------------------------------
+// TYPES
+// ------------------------------------------------------
+export type BorrowCreate = {
   book_id: number;
 };
 
@@ -8,34 +11,89 @@ export type BorrowRead = {
   id: number;
   user_id: number;
   book_id: number;
-  borrowed_at: string; // ISO datetime
+
+  borrowed_at: string;
   due_date: string;
   returned_at?: string | null;
+
   fee_applied: number;
+
+  book?: {
+    title?: string;
+    author?: string;
+    isbn?: string;
+    cover_url?: string;
+  };
 };
 
+// ------------------------------------------------------
+// SERVICE
+// ------------------------------------------------------
 export const borrowsService = {
-  borrowBook: async (payload: BorrowRequest): Promise<BorrowRead> => {
-    const res = await api.fetchWithAuth(`/api/borrows/`, {
+  // --------------------------------------------------
+  // BORROW A BOOK
+  // --------------------------------------------------
+  async borrowBook(payload: BorrowCreate): Promise<BorrowRead> {
+    const resp = await api.fetchWithAuth(`/api/borrows/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return res as BorrowRead;
+
+    return resp as BorrowRead;
   },
 
-  returnBook: async (borrowId: number): Promise<BorrowRead> => {
-    const res = await api.fetchWithAuth(`/api/borrows/return/${borrowId}`, {
+  // --------------------------------------------------
+  // RETURN BOOK
+  // --------------------------------------------------
+  async returnBook(borrowId: number): Promise<BorrowRead> {
+    const resp = await api.fetchWithAuth(`/api/borrows/return/${borrowId}`, {
       method: "POST",
     });
-    return res as BorrowRead;
+
+    return resp as BorrowRead;
   },
 
-  myBorrows: async (): Promise<BorrowRead[]> => {
-    const res = await api.fetchWithAuth(`/api/borrows/me`, {
-      method: "GET",
-    });
-    return res as BorrowRead[];
+  // --------------------------------------------------
+  // USER — LIST MY BORROWS (active or with history)
+  // Backend: GET /api/borrows/me?include_returned=true
+  // --------------------------------------------------
+  async myBorrows(includeHistory = false): Promise<BorrowRead[]> {
+    const resp = await api.fetchWithAuth(
+      `/api/borrows/me?include_returned=${includeHistory ? "true" : "false"}`
+    );
+
+    const list = (resp || []) as BorrowRead[];
+
+    // normalize cover URLs
+    return list.map((b) => ({
+      ...b,
+      book: b.book
+        ? {
+            ...b.book,
+            cover_url: absoluteUrl(b.book.cover_url),
+          }
+        : undefined,
+    }));
+  },
+
+  // --------------------------------------------------
+  // LIST OVERDUE BORROWS
+  // --------------------------------------------------
+  async overdueBorrows(): Promise<BorrowRead[]> {
+    const resp = await api.fetchWithAuth(`/api/borrows/overdue`);
+
+    const list = (resp || []) as BorrowRead[];
+
+    return list.map((b) => ({
+      ...b,
+      book: b.book
+        ? {
+            ...b.book,
+            cover_url: absoluteUrl(b.book.cover_url),
+          }
+        : undefined,
+    }));
   },
 };
 

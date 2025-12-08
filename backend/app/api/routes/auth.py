@@ -8,6 +8,7 @@ from backend.app.crud import user_crud
 from backend.app.core.security import create_access_token, verify_password
 from backend.app.core.security import decode_access_token
 from backend.app.schemas.user_schema import TokenUserResponse, UserLogin, UserCreate, UserResponse
+from backend.app.api.depend import get_current_user
 
 router = APIRouter()
 
@@ -85,4 +86,11 @@ def register_user(
         role=payload.role
     )
     return UserResponse.from_orm(user)
+
+
+
+@router.get("/me", response_model=UserResponse)
+def get_current_user_profile(current_user=Depends(get_current_user)):
+    """Return the profile of the currently authenticated user."""
+    return UserResponse.from_orm(current_user)
     

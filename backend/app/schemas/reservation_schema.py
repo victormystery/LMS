@@ -8,12 +8,13 @@ class ReservationItem(BaseModel):
     user_id: int
     username: Optional[str]
     full_name: Optional[str]
+    role: Optional[str]
     book_id: int
     created_at: datetime
     notified: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PagedReservations(BaseModel):
@@ -23,4 +24,4 @@ class PagedReservations(BaseModel):
     total: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True

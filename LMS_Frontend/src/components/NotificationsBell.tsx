@@ -56,7 +56,7 @@ const NotificationsBell: React.FC = () => {
             <button
                 onClick={() => { setOpen(!open); if (!open) fetchItems(); }}
                 aria-label="Notifications"
-                className="p-2 rounded hover:bg-slate-800"
+                className="p-2 rounded hover:bg-transparent hover:opacity-70 transition-opacity"
             >
                 <Bell />
                 {unread > 0 && (
@@ -70,17 +70,36 @@ const NotificationsBell: React.FC = () => {
                     <div style={{ maxHeight: 300, overflowY: "auto" }}>
                         {loading && <div className="p-2 text-gray-300">Loading...</div>}
                         {!loading && items.length === 0 && <div className="p-2 text-sm text-gray-300">No new notifications</div>}
-                        {items.map((it) => (
-                            <div key={it.id} className="p-2 hover:bg-slate-800 flex justify-between items-start">
-                                <div>
-                                    <div className="text-sm font-medium">{it.book_title || it.message || "Notification"}</div>
-                                    <div className="text-xs text-gray-300">{it.full_name || it.username || "Someone"}</div>
+                        {items.map((it) => {
+                            const isOverdue = it.type === "overdue" || it.type === "overdue_librarian";
+                            const hours = it.hours_overdue || 0;
+                            const fee = it.current_fee || 0;
+                            
+                            return (
+                                <div key={it.id} className={`p-2 hover:bg-slate-800 flex justify-between items-start ${isOverdue ? 'border-l-4 border-red-500' : ''}`}>
+                                    <div className="flex-1">
+                                        <div className="text-sm font-medium">
+                                            {it.book_title || it.message || "Notification"}
+                                            {isOverdue && <span className="ml-2 text-red-400">⚠ OVERDUE</span>}
+                                        </div>
+                                        <div className="text-xs text-gray-300">
+                                            {it.type === "overdue_librarian" ? 
+                                                `Borrower: ${it.borrower_full_name || it.borrower_username || "Unknown"}` : 
+                                                (it.full_name || it.username || "Someone")
+                                            }
+                                        </div>
+                                        {isOverdue && (
+                                            <div className="text-xs text-red-300 mt-1">
+                                                {hours}h overdue • £{fee} fine
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <button onClick={() => markRead(it.id)} className="text-xs text-primary">Mark</button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <button onClick={() => markRead(it.id)} className="text-xs text-primary">Mark</button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}

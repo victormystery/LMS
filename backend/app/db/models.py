@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, func
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from backend.app.db.base import Base
@@ -12,6 +12,14 @@ class Book(Base):
     total_copies = Column(Integer, default=1)
     available_copies = Column(Integer, default=1)
     description = Column(Text, nullable=True)
+    category = Column(String, index=True, nullable=True)
+    publisher = Column(String, nullable=True)
+    publication_year = Column(Integer, nullable=True)
+    book_format = Column(String, nullable=True)
+    shelf = Column(String, nullable=True)
+    subcategory = Column(String, nullable=True)
+    cover_url = Column(String, nullable=True)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -31,6 +39,8 @@ class Borrow(Base):
     due_date = Column(DateTime, nullable=False)
     returned_at = Column(DateTime, nullable=True)
     fee_applied = Column(Integer, default=0)
+    payment_status = Column(String, default="unpaid")  # unpaid, paid
+    paid_at = Column(DateTime, nullable=True)
 
     user = relationship("User")
     book = relationship("Book")
