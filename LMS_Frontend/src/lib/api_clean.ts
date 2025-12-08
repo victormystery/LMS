@@ -78,8 +78,13 @@ async function get(path: string, options: RequestInit = {}) {
 }
 
 async function post(path: string, body?: any, options: RequestInit = {}) {
+  const token = getToken();
   const headers: any = options.headers ? { ...(options.headers as any) } : {};
   if (!(body instanceof FormData)) headers["Content-Type"] = "application/json";
+  
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const data = await request(path, {
     ...options,
@@ -92,8 +97,13 @@ async function post(path: string, body?: any, options: RequestInit = {}) {
 }
 
 async function put(path: string, body?: any, options: RequestInit = {}) {
+  const token = getToken();
   const headers: any = options.headers ? { ...(options.headers as any) } : {};
   if (!(body instanceof FormData)) headers["Content-Type"] = "application/json";
+  
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const data = await request(path, {
     ...options,
@@ -106,9 +116,17 @@ async function put(path: string, body?: any, options: RequestInit = {}) {
 }
 
 async function del(path: string, options: RequestInit = {}) {
+  const token = getToken();
+  const headers = options.headers ? { ...(options.headers as any) } : {};
+  
+  if (token && !headers["Authorization"]) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  
   const data = await request(path, {
     ...options,
     method: "DELETE",
+    headers,
   });
   return { data };
 }

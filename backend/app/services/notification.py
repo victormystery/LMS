@@ -69,6 +69,18 @@ class NotificationManager:
                         user = msg.get("username") or f"user_id={msg.get('user_id')}"
                         book = msg.get("book_title") or f"book_id={msg.get('book_id')}"
                         print(f"[Notification] Book available -> {book} for {user}")
+                    elif t == "overdue":
+                        user = msg.get("username") or f"user_id={msg.get('user_id')}"
+                        book = msg.get("book_title") or f"book_id={msg.get('book_id')}"
+                        fee = msg.get("current_fee", 0)
+                        hours = msg.get("hours_overdue", 0)
+                        print(f"[Notification] OVERDUE -> {book} by {user} | {hours}h overdue | £{fee} fine")
+                    elif t == "overdue_librarian":
+                        borrower = msg.get("borrower_username", "unknown")
+                        book = msg.get("book_title", "unknown")
+                        fee = msg.get("current_fee", 0)
+                        hours = msg.get("hours_overdue", 0)
+                        print(f"[Notification] OVERDUE (Librarian) -> {book} by {borrower} | {hours}h overdue | £{fee} fine")
                     else:
                         print("[Notification]", msg)
                 except Exception:

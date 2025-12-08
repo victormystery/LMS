@@ -39,6 +39,8 @@ class Borrow(Base):
     due_date = Column(DateTime, nullable=False)
     returned_at = Column(DateTime, nullable=True)
     fee_applied = Column(Integer, default=0)
+    payment_status = Column(String, default="unpaid")  # unpaid, paid
+    paid_at = Column(DateTime, nullable=True)
 
     user = relationship("User")
     book = relationship("Book")

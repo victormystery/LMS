@@ -65,13 +65,15 @@ const BookDetail = () => {
         try {
           setResLoading(true);
           const res = await booksService.listReservations(bookId, 1, resPageSize);
-          const items = res?.data?.items ?? [];
-          const total = res?.data?.total ?? 0;
+          console.log("Reservation response:", res);
+          const items = res?.items ?? [];
+          const total = res?.total ?? 0;
 
           setReservationQueue(items);
           setResTotal(total);
           setResPage(1);
         } catch (e) {
+          console.error("Error fetching reservations:", e);
           setReservationQueue([]);
           setResTotal(0);
         } finally {
@@ -168,14 +170,18 @@ const BookDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-10 shadow-sm">
+      <header className="border-b bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 sticky top-0 z-10 shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-primary" />
+          <div className="flex items-center gap-2 text-white">
+            <BookOpen className="w-6 h-6" />
             <h1 className="text-xl font-bold">Library System</h1>
           </div>
 
-          <Button variant="ghost" onClick={() => navigate(-1)}>
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate(-1)}
+            className="text-white hover:bg-white/20 border-white/30"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -421,12 +427,22 @@ const BookDetail = () => {
                               </AvatarFallback>
                             </Avatar>
 
-                            <div>
-                              <p className="font-medium">
-                                {r.full_name ??
-                                  r.username ??
-                                  `User ${r.user_id}`}
-                              </p>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  {r.full_name ??
+                                    r.username ??
+                                    `User ${r.user_id}`}
+                                </p>
+                                {r.role && (
+                                  <Badge 
+                                    variant={r.role === "student" ? "default" : "secondary"}
+                                    className="text-xs"
+                                  >
+                                    {r.role}
+                                  </Badge>
+                                )}
+                              </div>
 
                               <p className="text-xs text-muted-foreground">
                                 Position: {idx + 1}
@@ -453,7 +469,7 @@ const BookDetail = () => {
                                     next,
                                     resPageSize
                                   );
-                                  const items = res?.data?.items ?? [];
+                                  const items = res?.items ?? [];
                                   setReservationQueue((p) => [...p, ...items]);
                                   setResPage(next);
                                 } finally {

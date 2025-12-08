@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { BookOpen, Clock, AlertCircle, ArrowLeft } from "lucide-react";
+import { BookOpen, Clock, AlertCircle, ArrowLeft, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { borrowsService } from "@/services/borrows";
 import { booksService } from "@/services/books";
@@ -150,16 +150,24 @@ const UserDashboard = () => {
   };
 
   // ----------------------------------------------------------
-  // Overdue logic
+  // Overdue logic - Calculate real-time fees
   // ----------------------------------------------------------
   const overdueRecords = borrows.filter(
     (b) => !b.returned_at && new Date(b.due_date) < new Date()
   );
 
-  const totalLateFees = overdueRecords.reduce(
-    (sum, r) => sum + (r.fee_applied || 0),
-    0
-  );
+  // Calculate real-time fees for overdue books: £5 + £1 per hour
+  const calculateCurrentFee = (dueDate: string) => {
+    const now = new Date();
+    const due = new Date(dueDate);
+    const diffMs = now.getTime() - due.getTime();
+    const hoursOverdue = Math.floor(diffMs / (1000 * 60 * 60));
+    return 5 + (hoursOverdue * 1);
+  };
+
+  const totalLateFees = overdueRecords.reduce((sum, r) => {
+    return sum + calculateCurrentFee(r.due_date);
+  }, 0);
 
   const currentUser = api.getUser();
 
@@ -169,35 +177,52 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-10 shadow-sm">
+      <header className="border-b bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 sticky top-0 z-10 shadow-lg">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-bold">My Books</h1>
+          <div className="flex items-center gap-2 text-white">
+            <BookOpen className="w-6 h-6" />
+            <h1 className="text-xl font-bold">My Library</h1>
           </div>
 
-          <Button variant="ghost" onClick={() => navigate("/catalog")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Catalog
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => navigate("/payments")}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Payments
+            </Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate("/catalog")}
+              className="text-white hover:bg-white/20"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Catalog
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         {/* Overdue Alert */}
         {overdueRecords.length > 0 && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              You have {overdueRecords.length} overdue book(s). Total late fees: $
-              {totalLateFees.toFixed(2)}
+          <Alert variant="destructive" className="mb-6 border-l-4 border-red-600 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/20 dark:to-pink-950/20">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800 dark:text-red-300">
+              ⚠️ You have {overdueRecords.length} overdue book(s). Current total fines: £
+              {totalLateFees.toFixed(2)} (£5 initial + £1 per hour)
             </AlertDescription>
           </Alert>
         )}
 
         {/* Borrowed Books */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Currently Borrowed</h2>
+          <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+            Currently Borrowed
+          </h2>
 
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -218,6 +243,11 @@ const UserDashboard = () => {
                 const title = b.book?.title ?? `Book #${b.book_id}`;
                 const author = b.book?.author ?? "Unknown";
                 const cover = b.book?.cover_url ?? null;
+
+                // Calculate real-time fee
+                const currentFee = isOverdue ? calculateCurrentFee(b.due_date) : 0;
+                const hoursOverdue = isOverdue ? 
+                  Math.floor((new Date().getTime() - new Date(b.due_date).getTime()) / (1000 * 60 * 60)) : 0;
 
                 return (
                   <Card
@@ -256,11 +286,13 @@ const UserDashboard = () => {
                       </div>
 
                       {isOverdue && (
-                        <div className="mt-2">
+                        <div className="mt-2 space-y-1">
                           <Badge variant="destructive">
-                            Overdue — $
-                            {b.fee_applied?.toFixed(2) ?? "0.00"} fee
+                            Overdue — {hoursOverdue}h
                           </Badge>
+                          <div className="text-sm font-semibold text-red-600">
+                            Current Fine: £{currentFee.toFixed(2)}
+                          </div>
                         </div>
                       )}
                     </CardContent>

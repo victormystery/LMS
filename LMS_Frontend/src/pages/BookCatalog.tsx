@@ -181,10 +181,17 @@ const BookCatalog = () => {
               </span>
             </div>
 
-            <Button variant="ghost" onClick={() => navigate("/my-books")}>
-              <User className="w-4 h-4 mr-2" />
-              My Books
-            </Button>
+            {currentUser?.role === "librarian" ? (
+              <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+                <User className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+            ) : (
+              <Button variant="ghost" onClick={() => navigate("/my-books")}>
+                <User className="w-4 h-4 mr-2" />
+                My Books
+              </Button>
+            )}
 
             <Button
               variant="ghost"
@@ -202,10 +209,12 @@ const BookCatalog = () => {
 
       {/* MAIN */}
       <main className="container mx-auto px-4 py-8">
-        <h2 className="text-3xl font-bold mb-2">Book Catalog</h2>
-        <p className="text-muted-foreground mb-6">
-          Browse and borrow books from the library
-        </p>
+        <div className="mb-8 p-8 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg">
+          <h2 className="text-4xl font-bold mb-2">Book Catalog</h2>
+          <p className="text-white/90 text-lg">
+            Browse and borrow books from the library
+          </p>
+        </div>
 
         {/* Search */}
         <div className="mb-6">

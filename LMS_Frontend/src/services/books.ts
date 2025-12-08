@@ -213,19 +213,21 @@ export const booksService = {
   listReservations: async (
     bookId?: number,
     page = 1,
-    pageSize = 10
-  ): Promise<{ data: { items: any[]; total: number } }> => {
+    pageSize = 10,
+    includeNotified = true
+  ): Promise<{ items: any[]; total: number; page: number; page_size: number }> => {
     const params = new URLSearchParams();
 
     if (bookId !== undefined) params.append("book_id", String(bookId));
     params.append("page", String(page));
     params.append("page_size", String(pageSize));
+    params.append("include_notified", String(includeNotified));
 
     const resp = await api.fetchWithAuth(
       `/api/reservations/?${params.toString()}`
     );
 
-    return resp as { data: { items: any[]; total: number } };
+    return resp;
   },
 };
 

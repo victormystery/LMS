@@ -80,13 +80,15 @@ async def upload_cover(
     if size_mb > MAX_IMAGE_SIZE_MB:
         raise HTTPException(400, detail="Image must be under 3 MB")
 
-    # Validate image content
-    kind = imghdr.what(None, h=content)
-    if kind not in ["jpeg", "png"]:
+    # Validate image content using PIL
+    try:
+        img = Image.open(BytesIO(content))
+        img_format = img.format.lower() if img.format else None
+        if img_format not in ["jpeg", "png"]:
+            raise HTTPException(400, detail="Only JPEG and PNG images are allowed")
+        img.verify()  # Verify it's a valid image
+    except Exception:
         raise HTTPException(400, detail="Invalid image file")
-
-    # Reset pointer for saving
-    await file.seek(0)
 
     # ------------------ Save Original Image ------------------
     covers_dir = os.path.abspath(

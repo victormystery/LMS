@@ -43,23 +43,26 @@ def list_reservations(
     book_id: Optional[int] = Query(None, alias="book_id"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=500),
+    include_notified: bool = Query(False, alias="include_notified"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """List pending reservations (notified == 0). Returns paged results and includes reserver username.
+    """List reservations. Returns paged results and includes reserver username.
 
     Query params:
     - book_id: optional filter by book
     - page / page_size: pagination
+    - include_notified: if True, include notified reservations; if False (default), only pending (notified == 0)
     """
     from backend.app.db import models
 
     offset = (page - 1) * page_size
 
     # base query selecting reservation and user fields via join
-    q = db.query(models.Reservation, models.User.username, models.User.full_name).join(models.User, models.User.id == models.Reservation.user_id)
-    # only pending
-    q = q.filter(models.Reservation.notified == 0)
+    q = db.query(models.Reservation, models.User.username, models.User.full_name, models.User.role).join(models.User, models.User.id == models.Reservation.user_id)
+    # filter by notified status unless include_notified is True
+    if not include_notified:
+        q = q.filter(models.Reservation.notified == 0)
     if book_id is not None:
         q = q.filter(models.Reservation.book_id == book_id)
 
@@ -70,14 +73,15 @@ def list_reservations(
     q = q.order_by(models.Reservation.created_at.asc())
     items = q.offset(offset).limit(page_size).all()
 
-    # items is list of tuples (Reservation, username, full_name)
+    # items is list of tuples (Reservation, username, full_name, role)
     results = []
-    for r, username, full_name in items:
+    for r, username, full_name, role in items:
         results.append({
             "id": r.id,
             "user_id": r.user_id,
             "username": username,
             "full_name": full_name,
+            "role": role,
             "book_id": r.book_id,
             "created_at": r.created_at,
             "notified": getattr(r, "notified", 0),
