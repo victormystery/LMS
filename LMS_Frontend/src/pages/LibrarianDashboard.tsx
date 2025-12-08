@@ -123,7 +123,7 @@ const LibrarianDashboard = () => {
   const loadCategories = async () => {
     try {
       const data = await booksService.getCategories();
-      setCategories(data?.length ? data : PRELOADED_CATEGORIES);
+      setCategories(PRELOADED_CATEGORIES);
     } catch {
       setCategories(PRELOADED_CATEGORIES);
     }

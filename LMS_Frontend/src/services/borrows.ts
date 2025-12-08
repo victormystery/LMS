@@ -46,44 +46,26 @@ export const borrowsService = {
   // --------------------------------------------------
   // RETURN BOOK
   // --------------------------------------------------
-  async returnBook(borrowId: number): Promise<any> {
-    const resp = await api.fetchWithAuth(`/api/borrows/${borrowId}/return`, {
+  async returnBook(borrowId: number): Promise<BorrowRead> {
+    const resp = await api.fetchWithAuth(`/api/borrows/return/${borrowId}`, {
       method: "POST",
     });
 
-    return resp;
+    return resp as BorrowRead;
   },
 
   // --------------------------------------------------
-  // USER — LIST MY BORROWS (Optional history)
+  // USER — LIST MY BORROWS (active or with history)
+  // Backend: GET /api/borrows/me?include_returned=true
   // --------------------------------------------------
   async myBorrows(includeHistory = false): Promise<BorrowRead[]> {
     const resp = await api.fetchWithAuth(
-      `/api/borrows/my?history=${includeHistory ? "1" : "0"}`
+      `/api/borrows/me?include_returned=${includeHistory ? "true" : "false"}`
     );
 
     const list = (resp || []) as BorrowRead[];
 
     // normalize cover URLs
-    return list.map((b) => ({
-      ...b,
-      book: b.book
-        ? {
-            ...b.book,
-            cover_url: absoluteUrl(b.book.cover_url),
-          }
-        : undefined,
-    }));
-  },
-
-  // --------------------------------------------------
-  // LIBRARIAN — LIST ALL BORROWS
-  // --------------------------------------------------
-  async listAll(): Promise<BorrowRead[]> {
-    const resp = await api.fetchWithAuth(`/api/borrows/`);
-
-    const list = (resp || []) as BorrowRead[];
-
     return list.map((b) => ({
       ...b,
       book: b.book

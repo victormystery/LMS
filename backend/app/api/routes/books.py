@@ -9,7 +9,6 @@ from backend.app.services.catalogue import LibraryCatalogue
 import os
 from uuid import uuid4
 from fastapi.responses import JSONResponse
-import imghdr
 from PIL import Image
 from io import BytesIO
 
@@ -128,6 +127,7 @@ async def upload_cover(
     db.refresh(book)
 
     return {"cover_url": thumb_url}
+    
 
 
 # ------------------------- GET BOOK -------------------------
