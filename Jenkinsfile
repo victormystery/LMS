@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
-        GITHUB_BRANCH = 'development'
+        GITHUB_BRANCH = 'main'
         GITHUB_CREDENTIALS = 'github-credentials'
     }
 
@@ -33,10 +33,11 @@ pipeline {
             steps {
                 echo "📦 Installing Python backend dependencies..."
                 sh '''
-                    cd backend
+                   
                     python3 -m venv venv
                     . venv/bin/activate
-                    pip install -r requirements.txt
+                    pip install --upgrade pip
+                    pip install --no-cache-dir -r requirements.txt
                 '''
             }
         }
