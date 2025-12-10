@@ -5,7 +5,7 @@ pipeline {
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
         GITHUB_BRANCH = 'main'
         GITHUB_CREDENTIALS = 'github-credentials'
-        PYTHON = '/usr/local/bin/python3.10'   // <<--- update path as needed
+        PYTHON = '/usr/local/bin/python3.10'
     }
 
     options {
@@ -74,12 +74,10 @@ pipeline {
         }
     }
 
-    
-
+    post {
         success {
             echo "✅ Pipeline completed successfully!"
         }
-
         failure {
             echo "❌ Pipeline failed! Check logs above."
         }
