@@ -48,7 +48,7 @@ def downgrade() -> None:
     sa.Column('is_active', sa.BOOLEAN(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=1)
+    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_table('reservations',
     sa.Column('id', sa.INTEGER(), nullable=False),
@@ -85,7 +85,7 @@ def downgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_books_title'), 'books', ['title'], unique=False)
-    op.create_index(op.f('ix_books_isbn'), 'books', ['isbn'], unique=1)
+    op.create_index(op.f('ix_books_isbn'), 'books', ['isbn'], unique=True)
     op.create_index(op.f('ix_books_id'), 'books', ['id'], unique=False)
     op.create_index(op.f('ix_books_author'), 'books', ['author'], unique=False)
     # ### end Alembic commands ###

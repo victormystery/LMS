@@ -70,6 +70,8 @@ async def upload_cover(
 ):
 
     # Validate extension
+    if not file.filename:
+        raise HTTPException(400, detail="Filename is required")
     ext = file.filename.split(".")[-1].lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(400, detail="Only JPG and PNG images allowed")
@@ -124,7 +126,7 @@ async def upload_cover(
     if not book:
         return JSONResponse(status_code=404, content={"detail": "book not found"})
 
-    book.cover_url = thumb_url
+    setattr(book, "cover_url", thumb_url)
     db.commit()
     db.refresh(book)
 
