@@ -23,7 +23,7 @@ def login_for_access_token(
 ):
     user = user_crud.get_user_by_username(db, payload.username)
 
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if not user or not verify_password(payload.password, user.hashed_password): # pyright: ignore[reportArgumentType]
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -31,7 +31,7 @@ def login_for_access_token(
         )
 
     access_token = create_access_token(
-        subject=user.username,
+        subject=user.username, # type: ignore
         role=user.role
     )
 
@@ -82,8 +82,8 @@ def register_user(
         db=db,
         username=payload.username,
         password=payload.password,
-        full_name=payload.full_name,
-        role=payload.role
+        full_name=payload.full_name, # pyright: ignore[reportArgumentType]
+        role=payload.role # type: ignore
     )
     return UserResponse.from_orm(user)
 
