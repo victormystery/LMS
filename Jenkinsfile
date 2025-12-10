@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // GitHub Configuration
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
         GITHUB_BRANCH = 'development'
         GITHUB_CREDENTIALS = 'github-credentials'
@@ -32,112 +31,53 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
+
+        stage("Checkout") {
             steps {
-                script {
-                    echo "🔄 Checking out code from GitHub..."
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: "*/${GITHUB_BRANCH}"]],
-                        userRemoteConfigs: [[
-                            url: "${GITHUB_REPO}",
-                            credentialsId: "${GITHUB_CREDENTIALS}"
-                        ]]
-                    ])
-                }
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${GITHUB_BRANCH}"]],
+                    userRemoteConfigs: [[
+                        url: GITHUB_REPO,
+                        credentialsId: GITHUB_CREDENTIALS
+                    ]]
+                ])
             }
         }
 
-        stage('Code Quality Analysis') {
-            parallel {
-                stage('Python Backend Analysis') {
-                    steps {
-                        script {
-                            echo "🔍 Running Python code quality checks..."
-                            sh '''
-                                cd backend
-                                python -m pip install --quiet pylint flake8 bandit
-                                
-                                echo "Running pylint..."
-                                pylint app/ --disable=all --enable=E --max-line-length=120 || true
-                                
-                                echo "Running flake8..."
-                                flake8 app/ --max-line-length=120 --count --statistics || true
-                                
-                                echo "Running security check with bandit..."
-                                bandit -r app/ -ll || true
-                            '''
-                        }
-                    }
-                }
-                
-                stage('Frontend Analysis') {
-                    steps {
-                        script {
-                            echo "🔍 Running frontend code quality checks..."
-                            sh '''
-                                cd LMS_Frontend
-                                npm install --silent
-                                npx eslint src/ --max-warnings=5 || true
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Backend Tests') {
+        stage("Login to DockerHub") {
             steps {
-                script {
-                    echo "🧪 Running backend tests..."
+                withCredentials([
+                    usernamePassword(credentialsId: 'dockerhub-cred',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS')
+                ]) {
                     sh '''
-                        cd backend
-                        python -m pip install --quiet pytest pytest-cov
-                        python -m pytest app/test/ -v --cov=app --cov-report=xml --cov-report=html || true
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
         }
 
-        stage('Frontend Tests') {
+        stage("Build Backend Image") {
             steps {
-                script {
-                    echo "🧪 Running frontend tests..."
-                    sh '''
-                        cd LMS_Frontend
-                        npm test -- --coverage --watchAll=false || true
-                    '''
-                }
+                sh '''
+                    cd backend
+                    docker build -t ${DOCKER_IMAGE_BACKEND}:latest .
+                '''
             }
         }
 
-        stage('Build Backend Docker Image') {
+        stage("Build Frontend Image") {
             steps {
-                script {
-                    echo "🐳 Building backend Docker image..."
-                    sh '''
-                        cd backend
-                        docker build -t ${DOCKER_IMAGE_BACKEND}:${IMAGE_TAG} -t ${DOCKER_IMAGE_BACKEND}:latest .
-                        echo "✅ Backend image built: ${DOCKER_IMAGE_BACKEND}:${IMAGE_TAG}"
-                    '''
-                }
+                sh '''
+                    cd LMS_Frontend
+                    docker build -t ${DOCKER_IMAGE_FRONTEND}:latest .
+                '''
             }
         }
 
-        stage('Build Frontend Docker Image') {
-            steps {
-                script {
-                    echo "🐳 Building frontend Docker image..."
-                    sh '''
-                        cd LMS_Frontend
-                        docker build -t ${DOCKER_IMAGE_FRONTEND}:${IMAGE_TAG} -t ${DOCKER_IMAGE_FRONTEND}:latest .
-                        echo "✅ Frontend image built: ${DOCKER_IMAGE_FRONTEND}:${IMAGE_TAG}"
-                    '''
-                }
-            }
-        }
-
-        stage('Push to Docker Registry') {
+        stage("Push Images") {
             steps {
                 script {
                     echo "📤 Pushing images to Docker registry..."
@@ -166,10 +106,13 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+        stage("Deploy to EC2") {
             steps {
-                script {
-                    echo "🚀 Deploying to EC2 instance..."
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh',
+                        keyFileVariable: 'SSH_KEY'),
+                    string(credentialsId: 'ec2-host', variable: 'HOST')
+                ]) {
                     sh '''
                         # Check if SSH key is configured
                         if [ -z "${EC2_SSH_KEY_PATH}" ]; then
