@@ -5,6 +5,7 @@ pipeline {
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
         GITHUB_BRANCH = 'main'
         GITHUB_CREDENTIALS = 'github-credentials'
+        PYTHON = '/usr/local/bin/python3.10'   // <<--- update path as needed
     }
 
     options {
@@ -32,44 +33,43 @@ pipeline {
         stage("Install Backend Dependencies") {
             steps {
                 echo "📦 Installing Python backend dependencies..."
-                sh '''
-                   
-                    python3 -m venv venv
+                sh """
+                    ${PYTHON} -m venv venv
                     . venv/bin/activate
                     pip install --upgrade pip
                     pip install --no-cache-dir -r requirements.txt
-                '''
+                """
             }
         }
 
         stage("Run Backend Tests") {
             steps {
                 echo "🧪 Running backend tests..."
-                sh '''
+                sh """
                     . venv/bin/activate
                     cd backend
                     pytest || true
-                '''
+                """
             }
         }
 
         stage("Install Frontend Dependencies") {
             steps {
                 echo "📦 Installing frontend dependencies..."
-                sh '''
+                sh """
                     cd LMS_Frontend
                     npm install
-                '''
+                """
             }
         }
 
         stage("Run Frontend Tests") {
             steps {
                 echo "🧪 Running frontend tests..."
-                sh '''
+                sh """
                     cd LMS_Frontend
                     npm test -- --watchAll=false || true
-                '''
+                """
             }
         }
     }
