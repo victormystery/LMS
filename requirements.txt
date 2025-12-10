@@ -7,7 +7,7 @@ colorama==0.4.6
 ecdsa==0.19.1
 fastapi==0.124.0
 gevent==25.9.1
-greenlet==2.0.2
+greenlet==3.2.2
 gunicorn==23.0.0
 h11==0.16.0
 idna==3.11
