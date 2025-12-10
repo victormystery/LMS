@@ -1,109 +1,93 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: lms-postgres
-    environment:
-      POSTGRES_DB: lms_db
-      POSTGRES_USER: ${DB_USER:-lmsuser}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-lmspassword}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-lmsuser}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - lms-network
-
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
+    image: victormystery/lms-backend:latest
     container_name: lms-backend
-    environment:
-      DATABASE_URL: postgresql://${DB_USER:-lmsuser}:${DB_PASSWORD:-lmspassword}@postgres:5432/lms_db
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 60
-    volumes:
-      - ./backend/static:/app/backend/static
     ports:
       - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://lms_user:lms_password@postgres:5432/lms_db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-in-production}
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - ENVIRONMENT=production
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - lms-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    volumes:
+      - ./static:/app/static
+
+  frontend:
+    image: victormystery/lms-frontend:latest
+    container_name: lms-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://backend:8000/api
+      - ENVIRONMENT=production
+    depends_on:
+      - backend
     networks:
       - lms-network
     restart: unless-stopped
-
-  frontend:
-    build:
-      context: .
-      dockerfile: LMS_Frontend/Dockerfile
-    container_name: lms-frontend
-    environment:
-      VITE_API_URL: http://backend:8000
-    ports:
-      - "80:80"
-    depends_on:
-      - backend
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-    networks:
-      - lms-network
-    restart: unless-stopped
+      start_period: 20s
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: lms-prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-    networks:
-      - lms-network
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: lms-grafana
+  postgres:
+    image: postgres:15-alpine
+    container_name: lms-postgres
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - POSTGRES_USER=lms_user
+      - POSTGRES_PASSWORD=lms_password
+      - POSTGRES_DB=lms_db
     ports:
-      - "3001:3000"
+      - "5432:5432"
+    networks:
+      - lms-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: lms-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
-      - prometheus
+      - backend
+      - frontend
     networks:
       - lms-network
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-  prometheus_data:
-  grafana_data:
 
 networks:
   lms-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
