@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres-staging:
+    image: postgres:15-alpine
+    container_name: lms-postgres-staging
+    environment:
+      POSTGRES_DB: lms_staging_db
+      POSTGRES_USER: lmsuser
+      POSTGRES_PASSWORD: lmspassword
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - lms-staging-network
+
+  backend-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: lms-backend-staging
+    environment:
+      DATABASE_URL: postgresql://lmsuser:lmspassword@postgres-staging:5432/lms_staging_db
+      SECRET_KEY: staging-secret-key
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+    volumes:
+      - ./backend/static:/app/backend/static
+    ports:
+      - "8001:8000"
+    depends_on:
+      - postgres-staging
+    networks:
+      - lms-staging-network
+
+  frontend-staging:
+    build:
+      context: .
+      dockerfile: LMS_Frontend/Dockerfile
+    container_name: lms-frontend-staging
+    environment:
+      VITE_API_URL: http://backend-staging:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend-staging
+    networks:
+      - lms-staging-network
+
+volumes:
+  postgres_staging_data:
+
+networks:
+  lms-staging-network:
+    driver: bridge
