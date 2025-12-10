@@ -4,15 +4,15 @@ pipeline {
     environment {
         // GitHub Configuration
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
-        GITHUB_BRANCH = 'development'
+        GITHUB_BRANCH = 'main'
         GITHUB_CREDENTIALS = 'github-credentials'
         
         // Docker Configuration
         DOCKER_REGISTRY = 'docker.io'
         DOCKER_USERNAME = credentials('docker-username')
         DOCKER_PASSWORD = credentials('docker-password')
-        DOCKER_IMAGE_BACKEND = "victormystery/lms-backend"
-        DOCKER_IMAGE_FRONTEND = "victormystery/lms-frontend"
+        DOCKER_IMAGE_BACKEND = "mysteryvictor/lms-backend"
+        DOCKER_IMAGE_FRONTEND = "mysteryvictor/lms-frontend"
         
         // AWS Configuration
         AWS_REGION = 'us-east-1'
