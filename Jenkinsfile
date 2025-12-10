@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GITHUB_REPO = 'https://github.com/victormystery/LMS.git'
-        GITHUB_BRANCH = 'development'
+        GITHUB_BRANCH = 'main'
         GITHUB_CREDENTIALS = 'github-credentials'
     }
 
